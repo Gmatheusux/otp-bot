@@ -1,0 +1,11 @@
+opencv-python
+numpy
+pydirectinput
+pytesseract
+scikit-fuzzy
+bezier
+pyautogui
+py_trees
+scikit-learn
+mss
+pywin32
