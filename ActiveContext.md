@@ -129,3 +129,13 @@
   3. <span style="color: #CC5500;">**Painel Pokémon (confirmado pelo jogador):**</span> barra vermelha = HP do jogador, azul = HP do pokémon; mãos = ofensivo (vermelha) / neutro (cinza) / defensivo (verde). Mão ativa detectada pela mediana do brilho do fundo pouco saturado.
   4. <span style="color: #CC5500;">**Postura automática:**</span> fases `normal | lure | combo` → postura configurável; só clica com leitura confiável e respeitando o cooldown `stance`. Desligada por padrão.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Cura automática (poção pelo HP vermelho, revive pelo HP azul / Pokébar) usando os sprites da aba Itens.
+
+## <span style="color: #CC5500;">**Handoff: Fase 13 (Cura com Pokémon)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída no código (2026-10-08); falta validar no jogo.
+- <span style="color: #CC5500;">**Decisões Arquiteturais Tomadas:**</span>
+  1. <span style="color: #CC5500;">**Rotina isolada:**</span> `core/heal_routine.py` (`PokemonHealRoutine`) com teclado/mouse/relógio injetados, testável sem o jogo. Fluxo: HP do jogador < limite e área limpa → curador → rotação → revive no curador → pokémon de farm.
+  2. <span style="color: #CC5500;">**Segurança:**</span> desligada por padrão; não roda sem leitura de HP; aborta e volta ao farm se surgir selvagem (checa o frame mais novo entre os passos); `finally` garante a volta ao farm em erro.
+  3. <span style="color: #CC5500;">**Troca de pokémon:**</span> clique no centro da linha da Pokébar (posição configurável) ou tecla. `region_point` passou a dividir a Pokébar na vertical.
+  4. <span style="color: #CC5500;">**Botões de teste:**</span> `POST /api/heal/test` (curador / farm / rotina completa) com 3s de espera.
+- <span style="color: #CC5500;">**Bloqueios:**</span> sem modelo YOLO treinado, "área limpa" é sempre verdadeiro; confirmar no jogo se um clique simples na Pokébar troca o pokémon.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Validar a cura no jogo; poção pelo HP vermelho; dataset + treino do YOLO.
