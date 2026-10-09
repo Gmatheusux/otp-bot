@@ -17,3 +17,7 @@ route.json
 
 # Worktrees do fluxo Zero Trust
 .worktrees/
+
+# E01: prints brutos do spike (ficam só no disco; as montagens lado a lado vão para o git)
+docs/e01/spike/*_antes.png
+docs/e01/spike/*_depois.png

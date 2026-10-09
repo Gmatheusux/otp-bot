@@ -11,10 +11,10 @@ Os valores marcados como *(config)* são padrões editáveis no console.
 
 | Item | Regra |
 |---|---|
-| Cliente | Poke Alliance em **tela cheia** ou **janela sem borda**, modo **DirectX** [Q1, Q58] |
+| Cliente | Poke Alliance em **tela cheia** ou **janela sem borda**, modo **DirectX** [Q1, Q58]. Medido na E01: **janela maximizada com barra de título** (cliente 1920×1009 e 3440×1369); classe da janela `PokeAllianceV3`; o jogo roda **como administrador** [E01] |
 | Resoluções | **3440×1440** e **1920×1080**, em momentos diferentes; escala do Windows **100%** [Q2] |
 | Monitor | O jogo fica **no monitor secundário**; você usa o primário ao mesmo tempo [Q3] |
-| Área do jogo | Sem zoom; telas maiores só ganham painéis laterais [Q4]. *Conferir com prints: na calibração atual a área do jogo é 1360×714 no 3440 e 1124×588 no 1080.* |
+| Área do jogo | Medida na E01 (borda preta, em pixels da área cliente, janela maximizada): **1920 → 1124×588 em (398, 142)**; **3440 → 2336×1224 em (552, 4)**. A área **cresce ~2,08× nos dois eixos** com a mesma proporção, então os **sprites ficam ~2× maiores no 3440** (corrige a Q4 "sem zoom": os painéis não escalam, a área do jogo sim). O "1360×714" antigo era a medida no print reduzido para 2000 px (×1,72 = 2339×1228) [E01]. *Estimativa, não medida: ~53,5 px por sqm no 1920 e ~111 px no 3440 (as duas áreas dividem em 21×11).* |
 | Hardware | RTX 5060 Ti **8 GB**, Ryzen 7 5700X3D, 32 GB de RAM; **jogo, bot e treino ao mesmo tempo** [Q5] |
 | Uso | Só seu; depois também num PC mais leve, que **só roda** o bot (o treino fica no PC principal) [Q6] |
 | Personagens | **1** [Q7] |
@@ -204,7 +204,7 @@ de farm" fixo.
 |---|---|---|
 | P1 | **Material do jogo** (prints, vídeo de 5 a 10 min) | Dataset da visão, calibração da Battle, debuff, coordenadas |
 | P2 | Tabela de itens [Q26] em branco: poção, revive, antídoto, bolas, teclas | Atalhos e sprites |
-| P3 | Tamanho real da área do jogo nas duas resoluções [Q4] | Os sprites mudam de tamanho? |
+| ~~P3~~ | ✅ E01: 1124×588 e 2336×1224; **sim, os sprites mudam (~2,08×)** (ver §1) | Visão: dataset nas duas resoluções ou normalizar a área do jogo |
 | P4 | Texto exato das mensagens de captura (sucesso e falha) em pt/en [Q23] | Confirmar a captura |
-| P5 | **Teste de envio de teclas para o jogo sem foco** (ver `ARQUITETURA.md`, risco R1) | Jogar no monitor secundário enquanto você usa o primário |
+| ~~P5~~ | ✅ E01: funciona por PostMessage com o bot **como administrador** (ver `ARQUITETURA.md` §4.1, D20) | Jogar no monitor secundário enquanto você usa o primário |
 | P6 | Duração de uma volta da rota [Q16] | Métrica de referência (dá para medir com a gravação) |

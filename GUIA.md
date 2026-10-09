@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **E01: Git, spike de entrada sem foco e janela do jogo** |
-| Última etapa concluída | E00: Análise e arquitetura (2026-10-09) |
+| **Etapa atual** | **E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza** |
+| Última etapa concluída | E01: Git, spike de entrada sem foco e janela do jogo (2026-10-09) |
 | Bloqueios | Material do jogo pendente (necessário a partir da E04) |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
 | Material do jogo recebido | ❌ nenhum ainda (ver §6) |
-| Última atualização | 2026-10-09, conversa E00 |
+| Última atualização | 2026-10-09, conversa E01 |
 
 ---
 
@@ -107,7 +107,8 @@ aprendizado → executável.
 - Rota por **coordenadas `x, y, z`** e **teclado numérico** (Num Lock desligado), gravada **jogando**.
 - Executável: **PyInstaller onedir** + **Velopack** (instalador e atualização automática), **ONNX Runtime** no núcleo,
   **kit de treino** separado com torch. Dados em `%APPDATA%\OTPBot`.
-- Decisões **D1–D19 aprovadas** pelo usuário em 2026-10-09; D11 depende do spike da E01.
+- Decisões **D1–D19 aprovadas** pelo usuário em 2026-10-09. D11 confirmada pelo spike da E01; **D20** (núcleo como
+  administrador) entrou na E01.
 
 ### 3.1 Estrutura de pastas alvo
 
@@ -152,7 +153,7 @@ Módulos que **saem**: `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/visi
 | Cura com pokémon | ⚠️ implementada, não validada no jogo |
 | Rota | ⚠️ cliques gravados em pixel; será substituída |
 | Opções da rota, poção, medicine, alertas, Telegram, comida, guild | 🟡 só configuração no console |
-| DPI, captura por janela, entrada sem foco, Battle, coordenadas, debuff | ❌ |
+| DPI, captura por janela, entrada sem foco, Battle, coordenadas, debuff | ❌ (E01: janela, DPI, captura e spike de entrada feitos) |
 
 ---
 
@@ -164,8 +165,8 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 | Etapa | Nome | Bloco | Tam. | Depende de | Status |
 |---|---|---|---|---|---|
 | E00 | Análise e arquitetura | — | — | — | ✅ |
-| E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ⬜ **próxima** |
-| E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ⬜ |
+| E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ✅ |
+| E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ⬜ **próxima** |
 | E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ⬜ |
 | E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ⬜ |
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
@@ -199,11 +200,12 @@ jogo **fora de foco**?
 **Pré-requisito do usuário:** ter o jogo aberto no monitor secundário em DirectX.
 
 - [x] Git funcionando (`safe.directory` adicionado); documentos da E00 no commit `157326c`, enviado ao GitHub.
-- [ ] `platform/game_window.py`: achar a janela do cliente, monitor, retângulo, foco; DPI aware.
-- [ ] Script de spike em `tools/spike_input.py`: teclado numérico (Num Lock off), hotkeys F1–F12 e clique, via
-  PostMessage com o jogo **sem foco**; registrar o que funcionou.
-- [ ] Captura **só da janela do jogo** no monitor secundário; escolher o perfil de calibração pelo tamanho da janela.
-- [ ] Medir a área do jogo nas duas resoluções (pendência P3 da especificação).
+- [x] `platform/game_window.py`: achar a janela do cliente, monitor, retângulo, foco; DPI aware.
+- [x] Script de spike em `tools/spike_input.py`: teclado numérico (Num Lock off), hotkeys F1–F12 e clique, via
+  PostMessage com o jogo **sem foco**; registrar o que funcionou. *(Testados: numérico 8, F5 e clique esquerdo.)*
+- [x] Captura **só da janela do jogo** no monitor secundário; escolher o perfil de calibração pelo tamanho da janela.
+  *(Função `pick_window_profile`; o `main.py` ainda captura o monitor inteiro, ver pendências da E01 na §7.)*
+- [x] Medir a área do jogo nas duas resoluções (pendência P3 da especificação).
 
 **Aceite:** (1) commit feito; (2) relatório do spike com o veredito de D11 (segundo plano funciona? para quais
 entradas?) registrado em `docs/ARQUITETURA.md`; (3) captura da janela do jogo no monitor secundário mostrada no console
@@ -233,7 +235,10 @@ arquivo de dados dentro da pasta do código.
 - [ ] Sensores atuais (barras, chat, YOLO) publicando no WorldState.
 - [ ] `brain/arbiter.py` com a prioridade Segurança > Companion > Sobrevivência > Hunt e interrupção com limpeza.
 - [ ] `actuation/action_queue.py` (a partir do `action_orchestrator`), `input_lock.py` e `platform/input_backend.py`
-  (segundo plano e primeiro plano, conforme D11).
+  (segundo plano e primeiro plano, conforme D11). Segundo plano = o que o `tools/spike_input.py` provou (lParam com
+  scan code, numérico sem o bit *extended*). Ao iniciar, checar se o bot tem a mesma integridade do jogo (D20).
+- [ ] Sensores capturando **só a área cliente** (`capture_client`) com regiões **relativas ao cliente**: a calibração
+  atual está em coordenadas da tela em tela cheia e erra com o jogo maximizado com barra de título.
 - [ ] Portar as regras atuais (combo, defesa, postura, cura, captura) para comportamentos, sem mudar o que fazem.
 
 **Aceite:** o comportamento atual continua igual; nenhuma ação de entrada acontece fora da trava (teste); a Segurança
@@ -400,6 +405,35 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - Pendências e desvios:
 - Próxima etapa e o que o usuário precisa providenciar:
 ```
+
+### E01: Git, spike de entrada sem foco e janela do jogo (2026-10-09)
+- **Feito:** `otpbot/platform/game_window.py` (janela pela classe `PokeAllianceV3`, monitor, retângulo do cliente,
+  foco, DPI aware, `capture_client`, `pick_window_profile`, `save_png`); `tools/spike_input.py` (uma entrada por
+  execução: tecla ou clique, por PostMessage/SendMessage/primeiro plano, print antes e depois); 7 testes em
+  `tests/test_game_window.py`; medição da área do jogo nas duas resoluções.
+- **Critérios de aceite:**
+  1. Commit feito: commit `feat(e01)` desta etapa, levado para a `main`.
+  2. Veredito da D11 em `docs/ARQUITETURA.md` §4.1: PostMessage **funciona** sem foco para numérico 8 (3/3), F5
+     (2/2 com o pokémon na bola) e clique esquerdo (1/1), **com o bot como administrador**. Evidência: confirmação do
+     usuário + montagens em `docs/e01/spike/*_lado_a_lado.png`.
+  3. Captura só da janela do jogo **no monitor secundário**: `docs/e01/captura_1920_monitor_secundario.png`
+     (DISPLAY2, cliente em x = −1920); também `captura_1920_janela.png` e `captura_3440_janela.png` no principal.
+  4. Testes: `python -m pytest` → **41 passed**.
+- **Decisões novas / mudanças na arquitetura:** **D20** (núcleo como administrador; revisa a D10). D11 confirmada.
+- **Fatos novos do jogo (registrados na especificação):** classe da janela `PokeAllianceV3` (título `Service` e
+  processo `AudioEngine.exe`, disfarçados); o jogo roda como administrador; janela maximizada com barra de título;
+  área do jogo **1124×588** (1920) e **2336×1224** (3440), escala ~2,08× (os sprites mudam de tamanho); F5 na
+  hotbar do usuário chama o pokémon selecionado. P3 e P5 resolvidas.
+- **Pendências e desvios:**
+  - Não testados: as outras teclas do numérico, F1–F4 e F6–F12, clique direito, plano B. 1 das F5 com o pokémon na
+    bola não teve efeito visível (causa não confirmada).
+  - Não testado se o jogo abre **sem** administrador quando não há bot externo injetado.
+  - `PrintWindow` dá imagem preta: a captura exige o jogo **visível** (sem janela por cima).
+  - A calibração (`modules/screen_calibration.py`) está em coordenadas da tela em tela cheia; com a janela maximizada
+    o cliente começa em y = 23 e a área do jogo em y = 142 (não 138). O `main.py` continua capturando o monitor
+    inteiro. Fica para a E03 (sensores com `capture_client` e regiões relativas ao cliente), anotado na §5.
+  - Bug corrigido: `cv2.imwrite` falha calado em caminho com acento → `save_png` (imencode + tofile).
+- **Próxima etapa:** E02. O usuário precisa ter o jogo aberto (para conferir que as leituras de barras não mudaram).
 
 ### E00: Análise e arquitetura (2026-10-09)
 - **Feito:** análise da playlist do bot externo (11 vídeos via Gemini, `tools/analisar_playlist.py`); comparativo com

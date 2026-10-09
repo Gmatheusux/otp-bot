@@ -145,3 +145,8 @@
 - <span style="color: #CC5500;">**Resumo:**</span> Análise de um bot externo (playlist, 11 vídeos via Gemini), anamnese respondida, especificação da v1.0, arquitetura v2 (D1–D19 aprovadas) e plano em 17 etapas. A partir daqui o plano e o estado vivem no **`GUIA.md`**; este diário recebe uma entrada curta por etapa.
 - <span style="color: #CC5500;">**Bloqueios:**</span> Material do jogo pendente. (Git liberado e documentos enviados ao GitHub.)
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E01 (git, spike de entrada sem foco, janela do jogo).
+
+## <span style="color: #CC5500;">**Handoff: E01 (Git, spike de entrada sem foco e janela do jogo)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-09).
+- <span style="color: #CC5500;">**Resumo:**</span> `otpbot/platform/game_window.py` (janela pela classe `PokeAllianceV3`, captura só do cliente) e `tools/spike_input.py`. Spike: PostMessage com o jogo sem foco funciona (numérico 8, F5, clique), **desde que o bot rode como administrador** como o jogo (D20). Área do jogo 1124×588 (1920) e 2336×1224 (3440). Detalhes no `GUIA.md` §7 e `docs/ARQUITETURA.md` §4.1.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E02 (estrutura de pastas, %APPDATA%, limpeza).

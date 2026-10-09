@@ -188,6 +188,37 @@ flowchart LR
 - **Companion:** só conta como "você assumiu" o que você faz **com o jogo em foco** ou com o **mouse sobre a janela do
   jogo**. Mexer no monitor principal não pausa a hunt.
 
+### 4.1 Resultado do spike R1 (E01, 2026-10-09)
+
+Ferramenta: `tools/spike_input.py` (uma entrada por execução, print antes/depois em `docs/e01/spike/`). Janela:
+`otpbot/platform/game_window.py`. Cliente em DirectX, **maximizado com barra de título** (não tela cheia).
+
+**Janela do cliente:** classe **`PokeAllianceV3`**; título `Service` e processo `AudioEngine.exe` (disfarçados, não
+servem de chave). Sem janelas-filhas: a entrada vai direto para a janela principal.
+
+**Permissão (achado bloqueante):** o jogo roda com **integridade alta (administrador)**; o processo foi aberto junto com
+um bot externo injetável, e não testamos o jogo aberto sem ele. Um processo comum (integridade média) recebe
+**`Access is denied`** no `PostMessage` (UIPI do Windows); o `SendInput` do plano B é descartado pela mesma regra.
+**Rodando como administrador, o PostMessage passa** → D20.
+
+| Entrada (PostMessage, bot como administrador, jogo **sem foco**) | Tentativas | Resultado |
+|---|---|---|
+| Numérico **8** com Num Lock desligado (`VK_UP` + scan `0x48`, sem o bit *extended*) | 3 | ✅ 3/3: andou 1 sqm |
+| **F5** (`VK_F5` + scan `0x3F`; na hotbar do usuário = chamar o pokémon selecionado) | 5 | ✅ 2/2 com o pokémon na bola (uma no 3440/principal, uma no 1920/**secundário**). As outras 3 sem efeito visível: em 2 o pokémon já estava fora; em 1 estava na bola e nada aconteceu (causa não confirmada; o usuário cita o pokémon "selecionado" na Pokébar) |
+| **Clique esquerdo** no chão (`WM_MOUSEMOVE` + `WM_LBUTTONDOWN/UP`, x,y do cliente) | 1 | ✅ andou até o ponto; o cursor do usuário não se moveu |
+| Foco do usuário depois de cada envio | todas | ✅ continuou na janela de antes; o jogo nunca ganhou foco |
+
+**Não testado:** as outras setas do numérico, F1–F4 e F6–F12 (mesmo mecanismo da F5 e do 8, mas sem evidência),
+clique direito, `SendMessage`, plano B (primeiro plano). O plano B fica no `spike_input.py` (`--method foreground`).
+
+**Captura:** cópia da região do cliente na tela (mss) funciona com o jogo **sem foco** em qualquer monitor (testado no
+principal e no secundário), desde que **visível** (sem janela por cima: o PowerShell sobre o jogo saiu no print).
+`PrintWindow` devolve imagem **preta** neste cliente. Para capturar com o jogo coberto, a opção seria a Windows Graphics
+Capture (não necessária na v1.0).
+
+**Veredito D11:** **segundo plano (PostMessage) funciona** para teclado numérico, hotkey F e clique, **com o núcleo
+rodando como administrador**. O backend preferido da E03 é o de segundo plano; o primeiro plano fica como reserva.
+
 ---
 
 ## 5. Hunt, rota e equipe
@@ -421,7 +452,7 @@ sequenceDiagram
 
 | # | Risco | Impacto | Como reduzir |
 |---|---|---|---|
-| **R1** | O cliente **não aceitar teclas por PostMessage** (sem foco) | Alto: você não poderia usar o monitor principal enquanto o bot joga | **Primeira tarefa do projeto:** spike de 1–2 horas testando teclas do teclado numérico, hotkeys e clique por PostMessage no cliente em DirectX. Plano B: primeiro plano com troca rápida de foco |
+| **R1** | O cliente **não aceitar teclas por PostMessage** (sem foco) | Alto: você não poderia usar o monitor principal enquanto o bot joga | ✅ **Resolvido na E01** (§4.1): PostMessage funciona sem foco para numérico, F5 e clique, desde que o bot rode como administrador como o jogo (D20). Plano B (primeiro plano) fica de reserva |
 | R2 | **8 GB de VRAM** para jogo + inferência + treino ao mesmo tempo | Médio | Modelo pequeno (YOLO n/s), inferência ONNX com pouca memória, treino com batch pequeno e prioridade baixa; pausar o treino se o FPS cair |
 | R3 | Ler `x, y, z` com precisão | Médio | Dígitos-modelo (fonte fixa do jogo) em vez de Tesseract; validar contra o passo dado |
 | R4 | Cor do corpo shiny parecida com o normal | Médio | Classe `corpo_shiny` no YOLO + rastrear o shiny desde vivo até cair |
@@ -445,8 +476,8 @@ Aprovadas pelo usuário em 2026-10-09. Decisões novas entram como D20, D21… c
 | D7 | Programa em `%LOCALAPPDATA%`, dados em `%APPDATA%\OTPBot` | ✅ Adotar | — |
 | D8 | **Velopack**: instalador + atualização automática (suporte oficial a Python/PyInstaller; a ferramenta `vpk` precisa do .NET **só na máquina de build**) | ✅ Adotar | ✏️ você pediu instalador e atualização automática |
 | D9 | Fonte das atualizações | **GitHub Releases privado** | 🆕 alternativa: pasta compartilhada na rede |
-| D10 | Não rodar como administrador por padrão | ✅ Adotar | — |
-| D11 | **Backend de entrada trocável**, preferindo segundo plano (PostMessage) | ✅ Adotar, **depende do spike R1** | 🆕 |
+| D10 | Não rodar como administrador por padrão | ✏️ **Revista pela D20** (o núcleo precisa de admin; o kit de treino, processo separado, não precisa) | — |
+| D11 | **Backend de entrada trocável**, preferindo segundo plano (PostMessage) | ✅ **Confirmada pelo spike da E01** (§4.1) | 🆕 |
 | D12 | **Captura pela janela do jogo** (HWND), em qualquer monitor | ✅ Adotar | 🆕 |
 | D13 | Movimento pelo **teclado numérico** e posição por **coordenadas** | ✅ Adotar | 🆕 substitui a rota por pixel |
 | D14 | Rota criada pelo **gravador de hunt** + editor | ✅ Adotar | 🆕 |
@@ -455,3 +486,4 @@ Aprovadas pelo usuário em 2026-10-09. Decisões novas entram como D20, D21… c
 | D17 | Treino em **processo separado** com limite de VRAM e prioridade baixa | ✅ Adotar | 🆕 |
 | D18 | **Equipe com papéis** desde a v1 (só dano e curador ativos) | ✅ Adotar | 🆕 preparação da v2 |
 | D19 | Assinatura de código | Depois; o SmartScreen avisa na 1ª instalação | — |
+| D20 | **Núcleo roda como administrador** (mesma integridade do jogo, que roda elevado), senão o Windows bloqueia a entrada (UIPI). Ao iniciar, checar a integridade do jogo e do bot e avisar no console se o bot estiver abaixo | ✅ E01, 2026-10-09 | 🆕 revisa a D10 |
