@@ -9,6 +9,12 @@ const ELEMENTS = [
   'psychic', 'rock', 'ice', 'bug', 'dragon', 'ghost', 'dark', 'steel', 'fairy',
 ].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) }))
 
+const STANCE_OPTIONS = [
+  { value: 'offensive', label: 'Ofensivo' },
+  { value: 'neutral', label: 'Neutro' },
+  { value: 'defensive', label: 'Defensivo' },
+]
+
 export const TABS = [
   {
     id: 'inicio',
@@ -65,10 +71,17 @@ export const TABS = [
         ],
       },
       {
-        title: 'Ofensividade',
-        status: 'planejado',
-        description: 'Usa o combo mesmo fora de lures, aceitando mais risco.',
-        fields: [{ type: 'toggle', path: 'engine.offensive_mode', label: 'Modo ofensivo' }],
+        title: 'Postura automática',
+        status: 'ativo',
+        description:
+          'Clica na mão do painel Pokémon conforme a fase: vermelha = ofensivo, cinza = neutro, verde = defensivo. Antes de ligar, confira na aba Calibração se a postura atual está sendo lida certo.',
+        fields: [
+          { type: 'toggle', path: 'features.stance.auto', label: 'Trocar postura sozinho' },
+          { type: 'segmented', path: 'features.stance.normal', label: 'Normal', hint: 'Sem selvagens na tela.', options: STANCE_OPTIONS },
+          { type: 'segmented', path: 'features.stance.lure', label: 'Juntando (lure)', hint: 'Selvagens na tela, ainda juntando.', options: STANCE_OPTIONS },
+          { type: 'segmented', path: 'features.stance.combo', label: 'Cercado (combo)', hint: 'Hora de soltar o combo.', options: STANCE_OPTIONS },
+          { type: 'number', path: 'cooldowns.stance', label: 'Intervalo mínimo entre trocas', unit: 's', min: 0.5, max: 30, step: 0.5 },
+        ],
       },
     ],
   },

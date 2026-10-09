@@ -22,7 +22,7 @@ def _deep_merge(base: dict, override: dict) -> dict:
 DEFAULT_CONFIG = {
     "cooldowns": {
         "heal": 2.0, "attack": 1.5, "loot": 0.5, "catch": 1.0, "revive": 5.0,
-        "auto_combo": 2.0, "defensive_buff": 10.0,
+        "auto_combo": 2.0, "defensive_buff": 10.0, "stance": 2.0,
     },
     "hotkeys": {"pause": "f8", "kill": "f9", "record": "f10", "play": "f11", "catch_key": "f4"},
     "engine": {"fps_target": 30, "offensive_mode": False, "model_path": "models/otp_yolo.pt", "confidence": 0.5},
@@ -42,6 +42,8 @@ DEFAULT_CONFIG = {
             "revive_on_boxed": True,
             "stop_route_when_boxed": True,
         },
+        # Desligado por padrão: o jogador liga depois de conferir a leitura da postura na Calibração
+        "stance": {"auto": False, "normal": "offensive", "lure": "defensive", "combo": "offensive"},
         "catch": {"enabled": True},
         "safety": {"gm_monitor": True, "chat_roi": [10, 600, 400, 30]},
         # Planejados: a UI já salva, o bot ainda não executa

@@ -25,21 +25,25 @@ def det(class_id, x, y):
             "box_relative": {"x_center": x, "y_center": y, "width": 0.02, "height": 0.02}}
 
 
-def run_one_frame(detections, navigator, config_patch=None):
+def run_one_frame(detections, navigator, config_patch=None, readings=None, clicks=None):
     """Roda a decision_thread com um único frame e devolve as teclas apertadas."""
     pressed = []
 
     async def fake_press(key):
         pressed.append(key)
 
+    async def fake_click(mouse_controller, point):
+        if clicks is not None:
+            clicks.append(point)
+
     async def scenario():
         orchestrator = UtilityOrchestrator()
-        for name in ("defensive_buff", "auto_combo", "revive", "catch"):
+        for name in ("defensive_buff", "auto_combo", "revive", "catch", "stance"):
             orchestrator.register_action(name, 10.0)
         queue = asyncio.Queue(maxsize=1)
         pause, kill = asyncio.Event(), asyncio.Event()
         pause.set()
-        telemetry = {}
+        telemetry = {"readings": readings or {}}
         config = ConfigManager.__new__(ConfigManager)._default_config()
         config["cooldowns"] = {}  # mantém os cooldowns de 10s registrados acima
         config["pokemon_profile"]["defensive_buff_key"] = "f3"
@@ -55,6 +59,7 @@ def run_one_frame(detections, navigator, config_patch=None):
         return telemetry
 
     with patch.object(dt, "press_key_action", fake_press), \
+         patch.object(dt, "click_action", fake_click), \
          patch.object(dt.pyautogui, "size", return_value=(1920, 1080)):
         telemetry = asyncio.run(scenario())
     return pressed, telemetry
@@ -101,6 +106,27 @@ def test_tecla_nao_definida_nao_e_apertada():
     send.assert_not_called()
     pressed, _ = run_one_frame([det(0, 0.5, 0.5)] + mobs, FakeNavigator(), no_defense_key)
     assert "f1" in pressed and "f2" in pressed
+
+
+def enable_auto_stance(config):
+    config["features"]["stance"].update(auto=True, normal="offensive", lure="defensive", combo="offensive")
+
+
+def test_postura_vai_para_defensivo_ao_juntar_selvagens():
+    clicks = []
+    run_one_frame([det(0, 0.5, 0.5), det(1, 0.6, 0.5)], FakeNavigator(), enable_auto_stance,
+                  readings={"stance": "offensive"}, clicks=clicks)
+    # Mão verde (3º botão) da região padrão, escalada de 2000px para 1920px
+    assert clicks == [(89, 69)]
+
+
+def test_postura_ja_certa_ou_sem_leitura_nao_clica():
+    clicks = []
+    lure = [det(0, 0.5, 0.5), det(1, 0.6, 0.5)]
+    run_one_frame(lure, FakeNavigator(), enable_auto_stance, readings={"stance": "defensive"}, clicks=clicks)
+    run_one_frame(lure, FakeNavigator(), enable_auto_stance, readings={"stance": None}, clicks=clicks)
+    run_one_frame(lure, FakeNavigator(), None, readings={"stance": "offensive"}, clicks=clicks)  # auto desligado
+    assert clicks == []
 
 
 def test_sem_deteccoes_nao_faz_nada():

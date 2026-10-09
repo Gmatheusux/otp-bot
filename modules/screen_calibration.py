@@ -24,9 +24,12 @@ DEFAULT_CALIBRATION = {
     "summon_name": "Megaclefable",
     "regions": {
         "game_area": {"x": 318, "y": 2, "w": 1360, "h": 714},
-        "player_hp": {"x": 576, "y": 685, "w": 114, "h": 7},
+        # Painel "Pokémon": vermelha = HP do jogador, azul = HP do pokémon (confirmado pelo jogador)
+        "player_hp": {"x": 45, "y": 36, "w": 60, "h": 10},
+        "pokemon_hp": {"x": 45, "y": 49, "w": 61, "h": 9},
+        # Mãos de postura: vermelha ofensivo, cinza neutro, verde defensivo
+        "stance": {"x": 46, "y": 63, "w": 56, "h": 18, "slots": 3},
         "exp_bar": {"x": 726, "y": 685, "w": 718, "h": 7},
-        "pokemon_hp": {"x": 20, "y": 307, "w": 75, "h": 7},
         "team": {"x": 22, "y": 104, "w": 71, "h": 144, "slots": 5},
         "battle_list": {"x": 0, "y": 290, "w": 105, "h": 160},
         "skills": {"x": 668, "y": 425, "w": 185, "h": 22},
@@ -39,11 +42,15 @@ DEFAULT_CALIBRATION = {
 
 # Como cada região é lida
 REGION_KINDS = {
-    "player_hp": ("bar", "green"),
+    "player_hp": ("bar", "red"),
+    "pokemon_hp": ("bar", "blue"),
     "exp_bar": ("bar", "yellow"),
-    "pokemon_hp": ("bar", "green"),
     "team": ("slots", "green"),
+    "stance": ("stance", None),
 }
+
+# Ordem das mãos no painel, da esquerda para a direita
+STANCES = ("offensive", "neutral", "defensive")
 
 
 def scaled_rect(region: Dict, scale: float, frame_shape) -> Optional[tuple]:
@@ -84,6 +91,38 @@ def bar_fill(crop: np.ndarray, color: str) -> Optional[float]:
     return round(min(100.0, float(cols[-1] + 1) / mask.shape[1] * 100), 1)
 
 
+def active_slot(crop: np.ndarray, slots: int) -> Optional[int]:
+    """
+    Qual botão está selecionado: o ativo tem o fundo da caixa mais claro.
+    Usa a mediana do brilho dos pixels pouco saturados (o fundo), ignorando o desenho colorido.
+    """
+    hsv = cv2.cvtColor(crop, cv2.COLOR_BGR2HSV)
+    w = crop.shape[1]
+    levels = []
+    for i in range(slots):
+        part = hsv[:, int(i * w / slots):int((i + 1) * w / slots)]
+        background = part[..., 2][part[..., 1] < 60]
+        levels.append(float(np.median(background)) if background.size else 0.0)
+    best = int(np.argmax(levels))
+    others = [v for i, v in enumerate(levels) if i != best]
+    # Sem diferença clara (ex: região fora do lugar) é melhor não chutar
+    if not others or levels[best] < max(others) * 1.4 + 5:
+        return None
+    return best
+
+
+def region_point(calibration: Dict, name: str, screen_width: int, slot: int = 0) -> Optional[tuple]:
+    """Centro da região (ou de um dos seus botões) em pixels da tela real, para clicar."""
+    region = calibration.get("regions", {}).get(name)
+    if not region:
+        return None
+    scale = screen_width / float(calibration.get("base_width") or screen_width)
+    slots = int(region.get("slots", 1))
+    x = (region["x"] + region["w"] * (slot + 0.5) / slots) * scale
+    y = (region["y"] + region["h"] / 2) * scale
+    return int(round(x)), int(round(y))
+
+
 def read_regions(frame: np.ndarray, calibration: Dict) -> Dict:
     """Lê todas as barras calibradas no frame. Barra não encontrada vira None."""
     scale = frame.shape[1] / float(calibration.get("base_width") or frame.shape[1])
@@ -101,6 +140,9 @@ def read_regions(frame: np.ndarray, calibration: Dict) -> Dict:
         crop = frame[y:y + h, x:x + w]
         if kind == "bar":
             readings[name] = bar_fill(crop, color)
+        elif kind == "stance":
+            slot = active_slot(crop, int(region.get("slots", 3)))
+            readings[name] = STANCES[slot] if slot is not None and slot < len(STANCES) else None
         else:
             slots = int(region.get("slots", 1))
             bands: List[Optional[float]] = []

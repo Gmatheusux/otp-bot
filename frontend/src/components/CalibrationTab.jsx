@@ -3,15 +3,16 @@ import { apiFetch, apiFetchImage } from '../lib/api.js'
 import { useConfig } from '../context/ConfigContext.jsx'
 import { Card, StatusBadge } from './Section.jsx'
 import { Field } from './fields.jsx'
-import ReadingsPanel from './ReadingsPanel.jsx'
+import ReadingsPanel, { STANCE_LABELS } from './ReadingsPanel.jsx'
 import Icon from './Icon.jsx'
 
 const CAPTURE_DELAY_S = 3
 
 const REGIONS = [
-  { id: 'player_hp', label: 'HP do jogador', hint: 'Barra verde embaixo do jogo, ao lado do número de vida.', color: '#22c55e', group: 'bars' },
+  { id: 'player_hp', label: 'HP do jogador', hint: 'Barra vermelha do painel Pokémon (ex: 5560 / 5560).', color: '#ef4444', group: 'bars' },
+  { id: 'pokemon_hp', label: 'HP do pokémon', hint: 'Barra azul do painel Pokémon (ex: 47459 / 47949).', color: '#3b82f6', group: 'bars' },
+  { id: 'stance', label: 'Postura (mãos)', hint: 'As 3 mãos: vermelha ofensivo, cinza neutro, verde defensivo. Cubra as três.', color: '#f472b6', group: 'bars' },
   { id: 'exp_bar', label: 'Barra de EXP', hint: 'Barra amarela inteira, do começo até o fim do trilho.', color: '#eab308', group: 'bars' },
-  { id: 'pokemon_hp', label: 'HP do pokémon', hint: 'Barra verde do seu pokémon na lista Batalha.', color: '#10b981', group: 'bars' },
   { id: 'team', label: 'Seus pokémons (Pokébar)', hint: 'Cubra só as barras verdes de vida, de cima a baixo. Ajuste a quantidade abaixo.', color: '#38bdf8', group: 'bars' },
   { id: 'game_area', label: 'Área do jogo', hint: 'Onde a IA procura selvagens, corpos e o seu pokémon.', color: '#f97316', group: 'areas' },
   { id: 'battle_list', label: 'Lista Batalha', hint: 'Nomes e vidas de quem está em combate.', color: '#a855f7', group: 'areas' },
@@ -25,6 +26,7 @@ const REGIONS = [
 function formatReading(region, readings) {
   if (!readings || !(region.id in readings)) return null
   const value = readings[region.id]
+  if (region.id === 'stance') return value ? STANCE_LABELS[value] : 'não encontrado'
   if (Array.isArray(value)) return value.map((v) => (v === null ? '—' : Math.round(v))).join(' · ') + '%'
   return value === null ? 'não encontrado' : `${Math.round(value)}%`
 }

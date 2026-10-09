@@ -5,6 +5,7 @@ from core.action_orchestrator import UtilityOrchestrator
 from core.navigator import Navigator
 from core.mouse_controller import MouseController
 from modules.spatial_analyzer import SpatialAnalyzer
+from modules.screen_calibration import STANCES, region_point
 import keyboard
 import pyautogui
 
@@ -22,6 +23,18 @@ async def auto_catch_action(mouse_controller: MouseController, catch_key: str, s
     await asyncio.sleep(0.1) # Breve delay para a pokebola "engatilhar" no cursor
     await asyncio.to_thread(mouse_controller.click, (screen_x, screen_y))
     logger.info(f">>> [AUTO CATCH] Pokebola jogada em ({screen_x}, {screen_y})! <<<")
+
+async def click_action(mouse_controller: MouseController, point: tuple):
+    """Corrotina para clicar num ponto da interface sem travar o loop."""
+    await asyncio.to_thread(mouse_controller.click, point)
+
+STANCE_LABELS = {"offensive": "Ofensivo", "neutral": "Neutro", "defensive": "Defensivo"}
+
+def combat_phase(is_boxed: bool, mobs_on_screen: int) -> str:
+    """normal = sem selvagens | lure = juntando selvagens | combo = cercado, hora do combo."""
+    if is_boxed:
+        return "combo"
+    return "lure" if mobs_on_screen > 0 else "normal"
 
 async def decision_thread(
     orchestrator: UtilityOrchestrator,
@@ -74,6 +87,19 @@ async def decision_thread(
             if telemetry is not None:
                 telemetry["mobs_on_screen"] = mobs_on_screen
                 telemetry["is_boxed"] = is_boxed
+
+            # Postura automática: clica na mão (ofensivo/neutro/defensivo) definida para a fase atual
+            stance_cfg = config.get("features", {}).get("stance", {})
+            if stance_cfg.get("auto") and telemetry is not None:
+                phase = combat_phase(is_boxed, mobs_on_screen)
+                desired = stance_cfg.get(phase)
+                current = telemetry.get("readings", {}).get("stance")
+                # Sem leitura confiável da postura atual, não clica no escuro
+                if desired in STANCES and current and current != desired and orchestrator.can_execute("stance"):
+                    point = region_point(config.get("calibration", {}), "stance", screen_w, STANCES.index(desired))
+                    if point:
+                        logger.info(f">>> [POSTURA] {STANCE_LABELS[current]} -> {STANCE_LABELS[desired]} (fase: {phase}) <<<")
+                        await orchestrator.execute("stance", click_action, mouse_controller, point)
 
             # O combate vale com ou sem cavebot; a rota só é interrompida quando estiver tocando
             if is_boxed and combat.get("boxed_defense", True):
