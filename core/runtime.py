@@ -14,8 +14,9 @@ class BotRuntime:
     chamada tanto do loop asyncio quanto das threads de hotkey/janela.
     """
     def __init__(self, loop: asyncio.AbstractEventLoop, pause_event: asyncio.Event, kill_event: asyncio.Event,
-                 config_manager, navigator=None):
+                 config_manager, navigator=None, sprites=None):
         self.loop = loop
+        self.sprites = sprites
         self.pause_event = pause_event
         self.kill_event = kill_event
         self.config_manager = config_manager

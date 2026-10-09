@@ -19,6 +19,12 @@ const PATHS = {
   check: ['M5 12l5 5 9-10'],
   x: ['M6 6l12 12', 'M18 6 6 18'],
   chevron: ['M9 6l6 6-6 6'],
+  flask: ['M9 3h6', 'M10 3v6.5L4.6 18.2A2 2 0 0 0 6.3 21h11.4a2 2 0 0 0 1.7-2.8L14 9.5V3', 'M7.5 15h9'],
+  plus: ['M12 5v14', 'M5 12h14'],
+  camera: ['M4 8h3l2-3h6l2 3h3v11H4Z', 'M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z'],
+  upload: ['M12 15V4', 'M7 9l5-5 5 5', 'M5 15v4h14v-4'],
+  trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 13h10l1-13'],
+  search: ['M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14Z', 'M20 20l-4-4'],
 }
 
 export default function Icon({ name, className = 'h-4 w-4', filled = false }) {

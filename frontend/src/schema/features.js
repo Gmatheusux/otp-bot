@@ -120,6 +120,13 @@ export const TABS = [
     ],
   },
   {
+    id: 'itens',
+    label: 'Itens',
+    icon: 'flask',
+    description: 'Ensine o bot a reconhecer seus itens pela imagem (sprite) na tela.',
+    custom: 'items',
+  },
+  {
     id: 'rota',
     label: 'Rota',
     icon: 'route',

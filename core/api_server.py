@@ -1,4 +1,6 @@
 import asyncio
+import base64
+import binascii
 import json
 import logging
 import os
@@ -9,11 +11,12 @@ from pathlib import Path
 from typing import Any, Deque, Dict, List, Literal, Optional
 
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from core import runtime as runtime_module
+from modules import sprite_library
 
 logger = logging.getLogger("APIServer")
 
@@ -159,6 +162,115 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
             await websocket.receive_text()
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
+
+
+# ---------------------------------------------------------------- Sprites de itens
+
+# Último print tirado pelo console: o recorte é feito sobre ele, pixel a pixel, no servidor
+_last_screenshot = None
+
+
+class ScreenshotRequest(BaseModel):
+    delay_s: float = Field(default=3.0, ge=0, le=10)
+
+
+class SpriteCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    category: str
+    key: str = ""
+    region: Optional[List[int]] = None       # [x, y, largura, altura] no último print
+    image_base64: Optional[str] = None       # alternativa: PNG enviado pelo jogador
+
+
+class SpriteUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=60)
+    category: Optional[str] = None
+    key: Optional[str] = None
+    threshold: Optional[float] = Field(default=None, ge=0.5, le=0.99)
+
+
+def get_sprites(rt=Depends(get_runtime)):
+    return rt.sprites
+
+
+@app.post("/api/screenshot", dependencies=[Depends(require_token)])
+async def take_screenshot(req: ScreenshotRequest):
+    """Espera alguns segundos (para o jogador trocar para o jogo) e devolve o print em PNG."""
+    global _last_screenshot
+    await asyncio.sleep(req.delay_s)
+    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    _last_screenshot = frame
+    png = await asyncio.to_thread(sprite_library.encode_png, frame)
+    return Response(content=png, media_type="image/png")
+
+
+@app.get("/api/sprites", dependencies=[Depends(require_token)])
+async def list_sprites(sprites=Depends(get_sprites)):
+    return {"sprites": sprites.list(), "categories": list(sprite_library.CATEGORIES)}
+
+
+@app.post("/api/sprites", dependencies=[Depends(require_token)])
+async def create_sprite(req: SpriteCreate, sprites=Depends(get_sprites)):
+    if req.image_base64:
+        try:
+            image = sprite_library.decode_image(base64.b64decode(req.image_base64.split(",")[-1]))
+        except (ValueError, binascii.Error):
+            raise HTTPException(status_code=400, detail="Arquivo de imagem inválido.")
+    elif req.region:
+        if _last_screenshot is None:
+            raise HTTPException(status_code=400, detail="Tire um print antes de recortar.")
+        if len(req.region) != 4:
+            raise HTTPException(status_code=400, detail="Região deve ser [x, y, largura, altura].")
+        x, y, w, h = req.region
+        fh, fw = _last_screenshot.shape[:2]
+        if x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > fw or y + h > fh:
+            raise HTTPException(status_code=400, detail="Região fora do print.")
+        image = _last_screenshot[y:y + h, x:x + w].copy()
+    else:
+        raise HTTPException(status_code=400, detail="Envie uma região do print ou uma imagem.")
+
+    try:
+        return sprites.add(req.name, req.category, image, key=req.key)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/sprites/{sprite_id}/image", dependencies=[Depends(require_token)])
+async def sprite_image(sprite_id: str, sprites=Depends(get_sprites)):
+    try:
+        return Response(content=sprites.image_bytes(sprite_id), media_type="image/png")
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Sprite não encontrado.")
+
+
+@app.patch("/api/sprites/{sprite_id}", dependencies=[Depends(require_token)])
+async def update_sprite(sprite_id: str, req: SpriteUpdate, sprites=Depends(get_sprites)):
+    try:
+        return sprites.update(sprite_id, **req.model_dump())
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Sprite não encontrado.")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.delete("/api/sprites/{sprite_id}", dependencies=[Depends(require_token)])
+async def delete_sprite(sprite_id: str, sprites=Depends(get_sprites)):
+    try:
+        sprites.remove(sprite_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Sprite não encontrado.")
+    return {"status": "ok"}
+
+
+@app.post("/api/sprites/{sprite_id}/test", dependencies=[Depends(require_token)])
+async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(get_sprites)):
+    """Tira um print novo e diz se o bot encontra o item nele."""
+    await asyncio.sleep(req.delay_s)
+    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    try:
+        return await asyncio.to_thread(sprites.match, sprite_id, frame)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Sprite não encontrado.")
 
 
 # O console compilado (npm run build) é servido na raiz. Rotas da API acima têm prioridade.

@@ -6,6 +6,7 @@ import { TABS } from './schema/features.js'
 import Section from './components/Section.jsx'
 import OverviewTab from './components/OverviewTab.jsx'
 import RouteTab from './components/RouteTab.jsx'
+import ItemsTab from './components/ItemsTab.jsx'
 import Icon from './components/Icon.jsx'
 
 const TAB_KEY = 'otp-active-tab'
@@ -133,6 +134,8 @@ function Console() {
   let content
   if (tab.custom === 'overview') {
     content = <OverviewTab status={status} offline={offline} logs={logs} connected={connected} control={control} onNavigate={select} />
+  } else if (tab.custom === 'items') {
+    content = <ItemsTab />
   } else if (tab.custom === 'route') {
     content = <RouteTab tab={tab} status={status} offline={offline} control={control} />
   } else {

@@ -13,6 +13,7 @@ from core.mouse_controller import MouseController
 from core.config_manager import ConfigManager
 from core.navigator import Navigator
 from core.decision_thread import decision_thread
+from modules.sprite_library import SpriteLibrary
 
 # Configuração de Logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -107,7 +108,7 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     pause_event = asyncio.Event()
     kill_event = asyncio.Event()
 
-    rt = BotRuntime(loop, pause_event, kill_event, config_mgr, navigator)
+    rt = BotRuntime(loop, pause_event, kill_event, config_mgr, navigator, SpriteLibrary())
     runtime_module.runtime = rt
 
     # API do console + stream de logs no mesmo loop

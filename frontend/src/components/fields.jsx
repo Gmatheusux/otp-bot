@@ -109,7 +109,7 @@ function TextInput({ value, onChange, placeholder, disabled, wide = false }) {
   )
 }
 
-function Segmented({ value, onChange, options, disabled, columns }) {
+export function Segmented({ value, onChange, options, disabled, columns }) {
   return (
     <div
       className={columns ? 'grid gap-1.5' : 'inline-flex flex-wrap gap-1 rounded-lg border border-base-800 bg-base-950 p-1'}
@@ -217,7 +217,7 @@ function keyLabel(key) {
 }
 
 /** Escolha a tecla numa lista ou aperte a tecla desejada. */
-function KeyPicker({ value, onChange, disabled }) {
+export function KeyPicker({ value, onChange, disabled }) {
   const [open, setOpen] = useState(false)
   const [listening, setListening] = useState(false)
   const rootRef = useRef(null)
@@ -247,6 +247,7 @@ function KeyPicker({ value, onChange, disabled }) {
     const onKeyDown = (event) => {
       if (event.key === 'Escape' && !event.ctrlKey && !event.altKey) {
         event.preventDefault()
+        event.stopPropagation() // não fecha junto um modal que esteja por trás
         close()
         return
       }
