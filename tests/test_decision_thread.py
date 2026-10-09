@@ -8,6 +8,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from core import decision_thread as dt
 from core.action_orchestrator import UtilityOrchestrator
 from core.config_manager import ConfigManager
+from core import humanizer as human
+
+# Sem esperas humanas nos testes de decisão (os limites têm testes próprios em test_humanizer.py)
+human.set_humanizer(human.Humanizer.instant())
 
 
 class FakeNavigator:
@@ -101,9 +105,9 @@ def test_tecla_nao_definida_nao_e_apertada():
     def no_defense_key(config):
         config["pokemon_profile"]["defensive_buff_key"] = ""
     mobs = [det(1, 0.5 + 0.01 * i, 0.5) for i in range(8)]
-    with patch.object(dt.keyboard, "send") as send:
+    with patch.object(dt.keyboard, "press") as press:
         asyncio.run(dt.press_key_action(""))
-    send.assert_not_called()
+    press.assert_not_called()
     pressed, _ = run_one_frame([det(0, 0.5, 0.5)] + mobs, FakeNavigator(), no_defense_key)
     assert "f1" in pressed and "f2" in pressed
 

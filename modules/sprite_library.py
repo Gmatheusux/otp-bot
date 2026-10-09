@@ -23,10 +23,29 @@ MIN_SIDE = 6
 MAX_SIDE = 256
 
 
-def capture_screen(monitor_index: int = 1) -> np.ndarray:
-    """Print do monitor em BGR. Instância nova de mss por chamada: pode rodar em qualquer thread."""
+def pick_monitor(monitors: List[Dict], index: int = 0) -> Dict:
+    """
+    Monitor do jogo na lista do mss (0 = todos juntos, 1..N = cada monitor).
+    index 0 = automático: o monitor principal do Windows (o que começa em 0,0). O mss nem sempre
+    lista o principal como 1, e os cliques (pydirectinput) só alcançam o monitor principal.
+    """
+    screens = monitors[1:] or monitors
+    if 1 <= index < len(monitors):
+        return monitors[index]
+    for m in screens:
+        if m.get("left") == 0 and m.get("top") == 0:
+            return m
+    return screens[0]
+
+
+def is_primary(monitor: Dict) -> bool:
+    return monitor.get("left") == 0 and monitor.get("top") == 0
+
+
+def capture_screen(monitor_index: int = 0) -> np.ndarray:
+    """Print do monitor do jogo em BGR. Instância nova de mss por chamada: pode rodar em qualquer thread."""
     with mss.mss() as sct:
-        img = np.array(sct.grab(sct.monitors[monitor_index]))
+        img = np.array(sct.grab(pick_monitor(sct.monitors, monitor_index)))
     return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
 

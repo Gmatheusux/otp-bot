@@ -6,8 +6,14 @@ import mss
 import numpy as np
 import pytesseract
 import logging
+import re
+
+from modules.sprite_library import pick_monitor
 
 logger = logging.getLogger("ChatAnalyzer")
+
+GM_PATTERN = re.compile(r"\b(gm|gamemaster|game master|admin|administrador|administrator|tutor)\b")
+
 
 class ChatAnalyzer:
     def __init__(self, roi: tuple, tesseract_cmd: str = r'C:\Program Files\Tesseract-OCR\tesseract.exe'):
@@ -20,6 +26,7 @@ class ChatAnalyzer:
         self._local = threading.local()
         self.last_frame = None
         self.mse_threshold = 5.0 # Limiar de mudana de pixel para engatilhar OCR
+        self.monitor_index = 0   # 0 = monitor principal
         
         # Opcional: Caminho para o executvel do tesseract (necessrio no Windows)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
@@ -31,8 +38,8 @@ class ChatAnalyzer:
             self._local.sct = mss.mss()
         return self._local.sct
 
-    def _capture_roi(self, monitor_index: int = 1) -> np.ndarray:
-        monitor = self.sct.monitors[monitor_index]
+    def _capture_roi(self) -> np.ndarray:
+        monitor = pick_monitor(self.sct.monitors, self.monitor_index)
         # Aplica offset da ROI na tela do mss
         capture_box = {
             "top": monitor["top"] + self.roi[1],
@@ -72,13 +79,10 @@ class ChatAnalyzer:
         # OCR
         text = pytesseract.image_to_string(thresh, config='--psm 7').strip().lower()
         
-        if text:
-            # Lista de palavras-chave perigosas (GM, Admin, GameMaster)
-            keywords = ["gm", "gamemaster", "admin", "tutor", "[gm]"]
-            for word in keywords:
-                if word in text:
-                    logger.warning(f"MENSAGEM DE GM DETECTADA NO OCR! Texto: '{text}'")
-                    return True
+        # Palavra inteira: "gm" dentro de "segmento" ou "tutor" dentro de "tutorial" não derrubam o bot
+        if text and GM_PATTERN.search(text):
+            logger.warning(f"MENSAGEM DE GM DETECTADA NO OCR! Texto: '{text}'")
+            return True
 
         return False
 
@@ -104,6 +108,7 @@ async def chat_monitor_thread(chat_analyzer: ChatAnalyzer, kill_event: asyncio.E
             if not safety.get("gm_monitor", True):
                 await asyncio.sleep(1)
                 continue
+            chat_analyzer.monitor_index = int(safety.get("monitor", 0))
             roi = tuple(safety.get("chat_roi", chat_analyzer.roi))
             if roi != chat_analyzer.roi:
                 chat_analyzer.roi = roi

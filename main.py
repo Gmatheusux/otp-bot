@@ -14,7 +14,8 @@ from core.config_manager import ConfigManager
 from core.navigator import Navigator
 from core.decision_thread import decision_thread, press_key_action, click_action
 from core.heal_routine import PokemonHealRoutine
-from modules.sprite_library import SpriteLibrary, capture_screen
+from modules.sprite_library import SpriteLibrary, capture_screen, is_primary, pick_monitor
+from core import humanizer as human
 from modules.screen_calibration import read_regions
 
 # Configuração de Logs
@@ -66,7 +67,8 @@ async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_eve
             engine_cfg = config_mgr.get_engine_config()
             fps_target = engine_cfg.get("fps_target", 30)
             frame_time = 1.0 / fps_target if fps_target > 0 else 0.033
-            detections = await asyncio.to_thread(vision_engine.process_frame, conf_threshold=engine_cfg.get("confidence", 0.5))
+            detections = await asyncio.to_thread(vision_engine.process_frame, monitor_index=int(engine_cfg.get("monitor", 0)),
+                                                 conf_threshold=engine_cfg.get("confidence", 0.5))
 
             now = time.perf_counter()
             if last_frame_at is not None:
@@ -95,7 +97,7 @@ async def calibration_monitor(config_mgr: ConfigManager, kill_event: asyncio.Eve
     """Lê HP, EXP e o time 2x por segundo. Só observa a tela, por isso roda mesmo pausado."""
     while not kill_event.is_set():
         try:
-            frame = await asyncio.to_thread(capture_screen)
+            frame = await asyncio.to_thread(capture_screen, int(config_mgr.get_engine_config().get("monitor", 0)))
             telemetry["readings"] = await asyncio.to_thread(read_regions, frame, config_mgr.config.get("calibration", {}))
             await asyncio.sleep(0.5)
         except Exception as e:
@@ -103,11 +105,23 @@ async def calibration_monitor(config_mgr: ConfigManager, kill_event: asyncio.Eve
             await asyncio.sleep(2)
 
 
+def warn_if_game_monitor_not_primary(index: int) -> None:
+    import mss
+    with mss.mss() as sct:
+        monitor = pick_monitor(sct.monitors, index)
+        count = len(sct.monitors) - 1
+    logger.info(f"Monitor do jogo: {monitor['width']}x{monitor['height']} em ({monitor['left']}, {monitor['top']}) | {count} monitor(es)")
+    if not is_primary(monitor):
+        logger.warning("O monitor escolhido não é o principal do Windows: os cliques não chegam lá. "
+                       "Deixe o jogo no monitor principal ou use 0 (automático) em Ajustes.")
+
+
 async def run_bot(port: int, ready: threading.Event) -> None:
     logger.info("Iniciando Bot Poketibia (Utility AI) - Inicialização do Core...")
 
     config_mgr = ConfigManager()
     engine_cfg = config_mgr.get_engine_config()
+    warn_if_game_monitor_not_primary(int(engine_cfg.get("monitor", 0)))
 
     orchestrator = UtilityOrchestrator()
     mouse_controller = MouseController()
@@ -152,10 +166,12 @@ async def run_bot(port: int, ready: threading.Event) -> None:
 
     # 5. Loop Concorrente
     perception_task = asyncio.create_task(perception_thread(vision_engine, state_queue, pause_event, kill_event, config_mgr, rt.telemetry))
-    heal_routine = PokemonHealRoutine(press_key_action, lambda point: click_action(mouse_controller, point), telemetry=rt.telemetry)
+    heal_routine = PokemonHealRoutine(press_key_action, lambda point: click_action(mouse_controller, point),
+                                      sleep=lambda s: asyncio.sleep(human.get().vary(s)), telemetry=rt.telemetry)
     rt.heal_routine = heal_routine
     decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry, heal_routine))
-    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.get_features().get("safety", {})))
+    safety_cfg = lambda: {**config_mgr.get_features().get("safety", {}), "monitor": config_mgr.get_engine_config().get("monitor", 0)}
+    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, safety_cfg))
 
     calibration_task = asyncio.create_task(calibration_monitor(config_mgr, kill_event, rt.telemetry))
 

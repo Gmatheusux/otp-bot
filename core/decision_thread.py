@@ -1,32 +1,45 @@
 import asyncio
 import logging
+import time
 from typing import Callable
 from core.action_orchestrator import UtilityOrchestrator
 from core.navigator import Navigator
 from core.mouse_controller import MouseController
 from modules.spatial_analyzer import SpatialAnalyzer
 from modules.screen_calibration import STANCES, region_point
+from core import humanizer as human
+from core.humanizer import HumanProfile
 import keyboard
 import pyautogui
 
 logger = logging.getLogger("DecisionThread")
 
+def _tap(key: str, hold_s: float):
+    keyboard.press(key)
+    time.sleep(hold_s)
+    keyboard.release(key)
+
 async def press_key_action(key: str):
-    """Corrotina helper para apertar tecla de forma não-bloqueante."""
+    """Aperta uma tecla como uma pessoa: respeita o ritmo das mãos e segura a tecla por um tempo variável."""
     if not key:
         return  # tecla ainda não escolhida no console; o aviso já sai no log
-    await asyncio.to_thread(keyboard.send, key)
+    hz = human.get()
+    await hz.before_input()
+    await asyncio.to_thread(_tap, key, hz.key_hold())
 
 async def auto_catch_action(mouse_controller: MouseController, catch_key: str, screen_x: int, screen_y: int):
     """Corrotina para acionar a pokebola e clicar na coordenada do cadáver."""
     await press_key_action(catch_key)
-    await asyncio.sleep(0.1) # Breve delay para a pokebola "engatilhar" no cursor
-    await asyncio.to_thread(mouse_controller.click, (screen_x, screen_y))
-    logger.info(f">>> [AUTO CATCH] Pokebola jogada em ({screen_x}, {screen_y})! <<<")
+    target = human.get().jitter_point((screen_x, screen_y), 2.0)
+    await human.get().before_input()  # tempo da bola "engatilhar" no cursor, variável
+    await asyncio.to_thread(mouse_controller.click, target)
+    logger.info(f">>> [AUTO CATCH] Pokebola jogada em {target}! <<<")
 
 async def click_action(mouse_controller: MouseController, point: tuple):
-    """Corrotina para clicar num ponto da interface sem travar o loop."""
-    await asyncio.to_thread(mouse_controller.click, point)
+    """Clica num ponto da interface sem travar o loop (mira com alguns pixels de imprecisão)."""
+    hz = human.get()
+    await hz.before_input()
+    await asyncio.to_thread(mouse_controller.click, hz.jitter_point(point, 1.5))
 
 STANCE_LABELS = {"offensive": "Ofensivo", "neutral": "Neutro", "defensive": "Defensivo"}
 
@@ -56,6 +69,11 @@ async def decision_thread(
 
     spatial = SpatialAnalyzer()
     screen_w, screen_h = pyautogui.size()
+    human_cfg = None
+    last_phase = None
+    last_corpses = 0
+    react_until = 0.0   # só age depois do tempo de reação a cada mudança de fase
+    catch_ready_at = 0.0
 
     while not kill_event.is_set():
         await pause_event.wait()
@@ -82,6 +100,10 @@ async def decision_thread(
             defensive_buff_key = profile.get("defensive_buff_key", "")
             catch_key = config.get("hotkeys", {}).get("catch_key", "f4")
             orchestrator.sync_cooldowns(config.get("cooldowns", {}))
+            hz = human.get()
+            if config.get("features", {}).get("human") != human_cfg:
+                human_cfg = config.get("features", {}).get("human")
+                hz.set_profile(HumanProfile.from_config(human_cfg))
             spatial.radius_threshold = combat.get("boxed_radius_pct", 15) / 100.0
             spatial.boxed_mob_count = int(combat.get("boxed_mobs", 8))
 
@@ -93,6 +115,21 @@ async def decision_thread(
             if telemetry is not None:
                 telemetry["mobs_on_screen"] = mobs_on_screen
                 telemetry["is_boxed"] = is_boxed
+                telemetry["apm"] = hz.actions_last_minute()
+
+            # Tempo de reação: uma pessoa não age no mesmo frame em que algo novo aparece
+            now = time.monotonic()
+            phase = combat_phase(is_boxed, mobs_on_screen)
+            if phase != last_phase:
+                last_phase = phase
+                react_until = now + hz.reaction_delay()
+            if len(dead_pokemons) > last_corpses:
+                catch_ready_at = now + hz.reaction_delay()
+            last_corpses = len(dead_pokemons)
+            if now < react_until:
+                state_queue.task_done()
+                await asyncio.sleep(0.01)
+                continue
 
             # Cura com pokémon: HP baixo e área limpa -> curador, rotação, revive, volta ao farm
             heal_cfg = config.get("features", {}).get("heal", {}).get("pokemon_heal", {})
@@ -121,7 +158,6 @@ async def decision_thread(
             # Postura automática: clica na mão (ofensivo/neutro/defensivo) definida para a fase atual
             stance_cfg = config.get("features", {}).get("stance", {})
             if stance_cfg.get("auto") and telemetry is not None:
-                phase = combat_phase(is_boxed, mobs_on_screen)
                 desired = stance_cfg.get(phase)
                 current = telemetry.get("readings", {}).get("stance")
                 # Sem leitura confiável da postura atual, não clica no escuro
@@ -148,9 +184,7 @@ async def decision_thread(
 
                 if combat.get("revive_on_boxed", True) and orchestrator.can_execute("revive"):
                     await orchestrator.execute("revive", press_key_action, revive_key)
-
-                # Reset instantâneo após o combo de sobrevivência
-                orchestrator.force_reset_all_timers()
+                # Cada ação volta só quando a própria recarga acabar: nada de rajada acima do limite humano
 
             elif mobs_on_screen > 0:
                 # Dano na corrida (Kite)
@@ -160,7 +194,7 @@ async def decision_thread(
 
             # Auto Catch (Livre de caixa)
             elif dead_pokemons and catch_enabled:
-                if orchestrator.can_execute("catch"):
+                if now >= catch_ready_at and orchestrator.can_execute("catch"):
                     corpse_x_rel, corpse_y_rel = dead_pokemons[0]
                     abs_x = int(corpse_x_rel * screen_w)
                     abs_y = int(corpse_y_rel * screen_h)

@@ -8,6 +8,7 @@ import win32api
 import pyautogui
 from typing import List, Dict, Optional
 from core.mouse_controller import MouseController
+from core import humanizer as human
 
 logger = logging.getLogger("Navigator")
 
@@ -25,6 +26,7 @@ class Navigator:
         self.route_points: List[Dict[str, float]] = []
         self.last_click_time = 0.0
         self._record_thread: Optional[threading.Thread] = None
+        self._generation = 0  # cada play novo invalida o loop anterior (que pode estar dormindo)
 
     def toggle_recording(self):
         """Alterna entre iniciar e parar a gravação de rota."""
@@ -109,12 +111,18 @@ class Navigator:
             logger.error("A rota carregada está vazia.")
             return
 
+        if self.is_playing:
+            logger.info("A rota já está tocando.")
+            return
         self.is_playing = True
+        self._generation += 1
+        generation = self._generation
+        playing = lambda: self.is_playing and self._generation == generation
         logger.info(f"Iniciando repetição (Cavebot) - {len(route)} waypoints carregados da rota.")
 
-        while self.is_playing:
+        while playing():
             for i, point in enumerate(route):
-                if not self.is_playing:
+                if not playing():
                     break
                 
                 delay = point.get("delay", 1.0)
@@ -123,16 +131,20 @@ class Navigator:
                 if delay > 20.0:
                     delay = 3.0
 
-                logger.debug(f"[Waypoint {i+1}/{len(route)}] Aguardando deslocamento: {delay}s...")
+                # Nunca o mesmo tempo nem o mesmo pixel em duas voltas
+                hz = human.get()
+                delay = hz.vary(delay, 0.08)
+                logger.debug(f"[Waypoint {i+1}/{len(route)}] Aguardando deslocamento: {delay:.2f}s...")
                 await asyncio.sleep(delay)
-                
-                if not self.is_playing:
+
+                if not playing():
                     break
 
-                target_pos = (point["x"], point["y"])
+                target_pos = hz.jitter_point((point["x"], point["y"]), 1.0)
                 logger.info(f"[Waypoint {i+1}/{len(route)}] Caminhando para -> {target_pos}")
-                
+
                 # Despacha o controle cinemático humanizado (blocking) para uma thread separada
+                await hz.before_input()
                 await asyncio.to_thread(self.mouse_controller.click, target_pos, 'left')
                 
         logger.info("Rotina de Cavebot finalizada.")

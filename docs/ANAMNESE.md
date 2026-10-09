@@ -45,11 +45,11 @@
 2. 🔴 Quais **monitores/resoluções** você vai usar de verdade? (já tenho 3440×1440 e 1920×1080). Usa **escala do Windows** diferente de 100% em algum?
    R:
 3. 🟡 O jogo fica sempre no **monitor principal**? Você joga com o jogo em um monitor e o console do bot em outro?
-   R:
+   R: Dois monitores: jogo + automação em um (o principal), console e coisas leves no outro.
 4. 🟡 O **zoom da área do jogo** muda? (no 3440 a área é ~2× maior que no 1080 → os sprites mudam de tamanho). Existe opção de zoom/escala no client?
    R:
 5. 🔴 Sua 5060 Ti é a de **8 GB ou 16 GB**? Qual CPU e RAM? O PC vai rodar jogo + bot + treino ao mesmo tempo?
-   R:
+   R: RTX 5060 Ti 8 GB, Ryzen 7 5800X3D, 32 GB de RAM.
 6. 🟡 O bot vai rodar **só no seu PC** ou quer distribuir para outras pessoas (amigos/venda)? Isso muda proteção, instalador e licença.
    R:
 7. ⚪ Joga com **1 personagem** ou vários (multi-client)? (multi-client é v2.0?)

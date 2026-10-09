@@ -20,7 +20,8 @@
         "fps_target": 30,
         "offensive_mode": false,
         "model_path": "models/otp_yolo.pt",
-        "confidence": 0.5
+        "confidence": 0.5,
+        "monitor": 0
     },
     "pokemon_profile": {
         "auto_combo_key": "f1",
@@ -124,6 +125,12 @@
             "daily": false,
             "tier": "normal",
             "element": "normal"
+        },
+        "human": {
+            "max_apm": 180,
+            "reaction_ms": 240,
+            "cooldown_jitter_pct": 12,
+            "hesitation": true
         }
     },
     "calibration": {

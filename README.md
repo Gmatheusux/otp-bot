@@ -130,7 +130,22 @@ No console você troca o perfil, clica numa região e **arrasta na imagem para r
 Seletor de teclas com lista (F1–F12, Ctrl+F, Shift+F, números) ou captura apertando a tecla. Uma tecla não definida fica em amarelo, o bot pula a ação e avisa no Início.
 
 ### Ajustes
-FPS da visão, confiança mínima da IA e arquivo do modelo.
+FPS da visão, confiança mínima da IA, arquivo do modelo e **monitor do jogo** (0 = automático, o principal do Windows).
+
+### Comportamento humano
+Todas as teclas e cliques passam por `core/humanizer.py`, como se fossem um par de mãos só:
+
+| Limite | Padrão | Como funciona |
+|---|---|---|
+| Ações por minuto | máx. 180 | Teto numa janela de 60 s, somando teclas e cliques. |
+| Intervalo entre entradas | ≥ 80 ms (mediana ~150 ms) | Lognormal; nunca duas entradas coladas. |
+| Tempo de reação | mediana ~240 ms, mínimo 160 ms | A cada mudança de fase (sem selvagens → lure → cercado) e a cada corpo novo. |
+| Tecla apertada | ~75 ms ± 18 ms | Pressiona, segura e solta; nada de toque de 0 ms. |
+| Recargas | configurada + folga aleatória (~12%) | Nunca abaixo da recarga do jogo; o intervalo entre dois usos nunca se repete. |
+| Mira | ± alguns pixels | Cliques na interface, no corpo e no minimapa nunca caem no mesmo pixel. |
+| Variação | por sessão e por hora | Ritmo sorteado a cada sessão; fica até 18% mais lento com as horas; ~1 em 20 reações hesita 0,6–2,5 s. |
+
+Os quatro primeiros ajustes ficam em **Ajustes → Comportamento humano**.
 
 ### Extras e Guild
 Comida automática e daily da guild: *em breve* (configurações já salvas).
@@ -142,9 +157,11 @@ Comida automática e daily da guild: *em breve* (configurações já salvas).
 | | Versão usada | Observação |
 |---|---|---|
 | Windows | 10 / 11 | Captura de tela e entrada de teclado/mouse são do Windows. |
+| CPU / RAM | Ryzen 7 5800X3D, 32 GB | Perfil do PC de referência. |
 | Python | 3.14 | |
 | Node.js | 24 | Só para compilar o console. |
 | GPU NVIDIA | RTX 5060 Ti (8 GB) | Opcional. Sem GPU a visão roda na CPU. Placas RTX 50xx precisam de PyTorch com CUDA 12.8+. |
+| Monitores | Jogo no **principal** | O bot só lê e clica no monitor principal do Windows; o outro monitor fica livre para o console e outras coisas. |
 | Tesseract OCR | — | Opcional, para o monitor de GM. Caminho padrão: `C:\Program Files\Tesseract-OCR\tesseract.exe`. |
 
 ---
@@ -238,7 +255,8 @@ core/
   config_manager.py         config.json com padrões e migração
   decision_thread.py        Cérebro: combo, defesa, postura, cura, captura
   heal_routine.py           Rotina de cura com pokémon
-  action_orchestrator.py    Cooldowns por ação
+  humanizer.py              Limites humanos: APM, reação, intervalos, variação por sessão
+  action_orchestrator.py    Cooldowns por ação (com folga aleatória)
   mouse_controller.py       Mouse com curva Bézier, easing e ruído
   navigator.py              Cavebot (gravar e tocar rota)
 modules/
@@ -253,7 +271,7 @@ tests/                      Testes (pytest)
 assets/                     Calibração e sprites
 ```
 
-Módulos das primeiras fases que o `main.py` não usa mais: `ai/` (protótipo de lógica fuzzy), `core/keyboard.py`, `core/mouse.py`, `modules/vision.py` e `modules/ui_analyzer.py`.
+Os protótipos das primeiras fases (`ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`, `modules/ui_analyzer.py`) foram removidos: o `main.py` não usava nenhum deles.
 
 ---
 
@@ -309,7 +327,9 @@ As abas e os campos do console vêm de `frontend/src/schema/features.js`: para e
 
 - **Sem modelo YOLO treinado.** A visão roda em modo *mock*: não vê selvagens nem corpos. Por isso combo, defesa, captura e "área limpa" da cura ainda não reagem ao jogo de verdade. Próximo passo: dataset com prints do Poke Alliance e treino.
 - **Troca de pokémon pela Pokébar** clica no meio da linha do pokémon. Falta confirmar no jogo se um clique simples troca; se não, use a troca por tecla.
-- **Cavebot** usa posições da tela, não coordenadas do mapa (as coordenadas do minimapa já estão marcadas na calibração para isso).
+- **Cavebot** usa posições da tela, não coordenadas do mapa (as coordenadas do minimapa já estão marcadas na calibração para isso). A gravação registra qualquer clique esquerdo, não só no minimapa.
+- **Captura** joga a bola em qualquer corpo; o filtro "só shiny" depende do modelo de visão.
+- **Cliques só no monitor principal**: o `pydirectinput` converte coordenadas pelo tamanho do monitor principal.
 - A barra roxa de golpes ainda não está marcada no perfil 1920×1080.
 
 ---

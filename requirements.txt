@@ -9,10 +9,6 @@ pyautogui
 keyboard
 pywin32
 pytesseract
-scikit-fuzzy
-scikit-learn
-bezier
-py_trees
 fastapi
 uvicorn[standard]
 pydantic

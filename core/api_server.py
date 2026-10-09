@@ -202,6 +202,13 @@ class SpriteUpdate(BaseModel):
     threshold: Optional[float] = Field(default=None, ge=0.5, le=0.99)
 
 
+def capture_game_screen():
+    """Print do monitor do jogo (Ajustes > Monitor do jogo)."""
+    rt = runtime_module.runtime
+    index = int(rt.config_manager.get_engine_config().get("monitor", 0)) if rt else 0
+    return sprite_library.capture_screen(index)
+
+
 def get_sprites(rt=Depends(get_runtime)):
     return rt.sprites
 
@@ -211,7 +218,7 @@ async def take_screenshot(req: ScreenshotRequest):
     """Espera alguns segundos (para o jogador trocar para o jogo) e devolve o print em PNG."""
     global _last_screenshot
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_game_screen)
     _last_screenshot = frame
     png = await asyncio.to_thread(sprite_library.encode_png, frame)
     return Response(content=png, media_type="image/png")
@@ -279,7 +286,7 @@ async def delete_sprite(sprite_id: str, sprites=Depends(get_sprites)):
 async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(get_sprites)):
     """Tira um print novo e diz se o bot encontra o item nele."""
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_game_screen)
     try:
         return await asyncio.to_thread(sprites.match, sprite_id, frame)
     except KeyError:
@@ -319,7 +326,7 @@ async def set_calibration_reference(req: ScreenshotRequest, rt=Depends(get_runti
     Resolução nova vira um perfil novo, copiado do mais próximo e escalado pela largura.
     """
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_game_screen)
     height, width = frame.shape[:2]
     key = f"{width}x{height}"
     CALIBRATION_DIR.mkdir(parents=True, exist_ok=True)
@@ -350,7 +357,7 @@ async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
         frame = sprite_library.decode_image(path.read_bytes())
     else:
         await asyncio.sleep(req.delay_s)
-        frame = await asyncio.to_thread(sprite_library.capture_screen)
+        frame = await asyncio.to_thread(capture_game_screen)
     readings = await asyncio.to_thread(screen_calibration.read_regions, frame, calibration, req.profile)
     return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 

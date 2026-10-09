@@ -3,25 +3,29 @@ import time
 import logging
 from typing import Callable, Dict, Any, Optional
 
+from core import humanizer as human
+
 logger = logging.getLogger(__name__)
 
 class ActionTimer:
     """
-    Gerencia o cooldown independente de uma ação específica.
-    Garante que a medição de tempo seja feita de forma matemática (time.time())
-    sem bloquear a thread principal.
+    Gerencia o cooldown independente de uma ação específica, sem bloquear a thread principal.
+    A cada uso a recarga efetiva é sorteada um pouco acima da configurada (Humanizer.cooldown):
+    o intervalo entre dois usos nunca se repete e nunca fica abaixo do que o jogo permite.
     """
     def __init__(self, cooldown_seconds: float):
         self.cooldown_seconds = cooldown_seconds
-        self.last_execution_time: float = 0.0
+        self.last_execution_time: float = float("-inf")
+        self._effective = cooldown_seconds
 
     def is_ready(self) -> bool:
         """Verifica de forma não-bloqueante se o tempo de cooldown já passou."""
-        return (time.time() - self.last_execution_time) >= self.cooldown_seconds
+        return (time.monotonic() - self.last_execution_time) >= self._effective
 
     def reset(self):
         """Reinicia o timer para o momento atual após a execução da ação."""
-        self.last_execution_time = time.time()
+        self.last_execution_time = time.monotonic()
+        self._effective = human.get().cooldown(self.cooldown_seconds)
 
 
 class UtilityOrchestrator:
@@ -44,7 +48,10 @@ class UtilityOrchestrator:
         """Aplica cooldowns vindos do console sem perder o tempo já decorrido de cada ação."""
         for action_name, seconds in cooldowns.items():
             if action_name in self._timers:
-                self._timers[action_name].cooldown_seconds = float(seconds)
+                timer = self._timers[action_name]
+                if timer.cooldown_seconds != float(seconds):
+                    timer.cooldown_seconds = float(seconds)
+                    timer._effective = float(seconds)
             else:
                 self.register_action(action_name, float(seconds))
 
@@ -86,10 +93,3 @@ class UtilityOrchestrator:
                 # O cooldown só é resetado após a ação terminar (ou falhar)
                 self._timers[action_name].reset()
                 logger.debug(f"Ação executada com sucesso. Cooldown resetado: {action_name}")
-
-    def force_reset_all_timers(self):
-        """Zera instantaneamente todos os cooldowns (Cérebro Try-Hard)."""
-        for timer in self._timers.values():
-            timer.last_execution_time = 0.0
-        logger.warning(">>> TIMERS RESETADOS: Todas as magias prontas para uso imediato! <<<")
-

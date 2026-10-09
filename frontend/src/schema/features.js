@@ -327,7 +327,7 @@ export const TABS = [
     id: 'ajustes',
     label: 'Ajustes',
     icon: 'settings',
-    description: 'Desempenho e modelo de visão (IA).',
+    description: 'Desempenho, modelo de visão (IA), monitor do jogo e limites humanos.',
     sections: [
       {
         title: 'Visão (IA)',
@@ -340,6 +340,28 @@ export const TABS = [
             hint: 'Mais alto = menos detecções erradas, mas pode deixar passar alguns pokémons.',
           },
           { type: 'text', path: 'engine.model_path', label: 'Arquivo do modelo', restart: true, wide: true, placeholder: 'models/otp_yolo.pt' },
+          {
+            type: 'number', path: 'engine.monitor', label: 'Monitor do jogo', min: 0, max: 6,
+            hint: '0 = automático (monitor principal do Windows). Os cliques só chegam no monitor principal.',
+          },
+        ],
+      },
+      {
+        title: 'Comportamento humano',
+        status: 'ativo',
+        description:
+          'Limites de todas as teclas e cliques do bot. Os tempos variam sempre, mudam a cada sessão e ficam um pouco mais lentos com as horas, como uma pessoa.',
+        fields: [
+          { type: 'slider', path: 'features.human.max_apm', label: 'Máximo de ações por minuto', min: 60, max: 300, unit: ' APM' },
+          {
+            type: 'number', path: 'features.human.reaction_ms', label: 'Tempo de reação médio', unit: 'ms', min: 160, max: 600, step: 10,
+            hint: 'Quanto o bot espera para reagir quando algo novo aparece na tela.',
+          },
+          {
+            type: 'slider', path: 'features.human.cooldown_jitter_pct', label: 'Folga nas recargas', min: 0, max: 30, unit: '%',
+            hint: 'O bot nunca usa um golpe no instante exato em que a recarga acaba.',
+          },
+          { type: 'toggle', path: 'features.human.hesitation', label: 'Hesitar de vez em quando', hint: 'Cerca de 1 em cada 20 reações demora 0,6 a 2,5 s a mais.' },
         ],
       },
     ],

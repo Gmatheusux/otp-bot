@@ -9,6 +9,8 @@ import torch
 from ultralytics import YOLO
 from typing import Dict, List
 
+from modules.sprite_library import pick_monitor
+
 class VisionEngine:
     def __init__(self, model_path: str = "yolov8n.engine"):
         """
@@ -29,11 +31,11 @@ class VisionEngine:
             self._local.sct = mss.mss()
         return self._local.sct
 
-    def capture_screen(self, monitor_index: int = 1) -> np.ndarray:
+    def capture_screen(self, monitor_index: int = 0) -> np.ndarray:
         """
-        Lê o buffer da tela local usando mss para latência mínima.
+        Lê o buffer da tela local usando mss para latência mínima (0 = monitor principal).
         """
-        monitor = self.sct.monitors[monitor_index]
+        monitor = pick_monitor(self.sct.monitors, monitor_index)
         sct_img = self.sct.grab(monitor)
         
         # Converte BGRA (mss) para BGR (padrão OpenCV/YOLO)
@@ -70,7 +72,7 @@ class VisionEngine:
                 
         return detections
 
-    def process_frame(self, monitor_index: int = 1, conf_threshold: float = 0.5) -> List[Dict]:
+    def process_frame(self, monitor_index: int = 0, conf_threshold: float = 0.5) -> List[Dict]:
         """
         Executa o pipeline completo: leitura de buffer da tela -> inferência -> formatação.
         """

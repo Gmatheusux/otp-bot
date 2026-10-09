@@ -13,6 +13,9 @@ class MouseController:
     def __init__(self):
         # Desabilita o fail-safe do pydirectinput para evitar crash acidental ao encostar nos cantos
         pydirectinput.FAILSAFE = False
+        # O padrão do pydirectinput dorme 0,1 s depois de CADA chamada: um movimento de 50 pontos
+        # levava 5 s e com ritmo robótico. Os tempos aqui são controlados pela curva e pelo Humanizer.
+        pydirectinput.PAUSE = 0.0
 
     def _ease_in_out_cubic(self, t: float) -> float:
         """

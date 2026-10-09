@@ -2,7 +2,7 @@
 
 ## <span style="color: #CC5500;">**Escopo Global e Progresso**</span>
 - <span style="color: #CC5500;">**Fase 1 (Concluída):**</span> Logger de tela e motor base de Visão (`vision.py`) para leitura via OpenCV/PyTesseract homologados.
-- <span style="color: #CC5500;">**Fase 2 (Concluída):**</span> Módulo de Visão de Alta Performance (`modules/vision_engine.py`) focado em YOLOv8 + TensorRT.
+- <span style="color: #CC5500;">**Fase 2 (Concluída):**</span> Módulo de Visão (`modules/vision_engine.py`) com YOLO (Ultralytics) em CUDA + FP16. TensorRT ainda não exportado (aceita `.engine` quando existir).
 - <span style="color: #CC5500;">**Fase 3 (Concluída - Evoluída):**</span> Cérebro Lógico e Orquestrador de Ações (`core/action_orchestrator.py`) com timers não-bloqueantes.
 - <span style="color: #CC5500;">**Fase 4 (Concluída):**</span> Atuador Cinemático (`core/mouse_controller.py`).
 - <span style="color: #CC5500;">**Fase 5 (Concluída):**</span> Integração Core (`main.py`) com injeção de dependências e concorrência via `asyncio`.
@@ -14,7 +14,7 @@
 - <span style="color: #CC5500;">**Pivot Tático (Override Claude):**</span> Devido a interrupções causadas pelos guardrails do Claude CLI nas fases anteriores, a delegação autônoma foi revogada para o backend. O Gravy assumiu o controle braçal da engenharia via `write_to_file`.
 - <span style="color: #CC5500;">**A Morte da FSM:**</span> A arquitetura rígida de Máquina de Estados Finita solicitada foi rejeitada em favor de um modelo superior: um <span style="color: #CC5500;">**Orquestrador Híbrido**</span> acoplado ao Utility AI.
 - <span style="color: #CC5500;">**Timers Assíncronos:**</span> Para evitar o spam e ao mesmo tempo não travar a thread de decisão, todos os cooldowns agora utilizam medição `time.time()` puramente matemática combinada com `asyncio.Lock()`.
-- <span style="color: #CC5500;">**Performance Extrema (GPU):**</span> Mantemos o uso de Pinned Memory via PyCUDA na visão.
+- <span style="color: #CC5500;">**Performance (GPU):**</span> Inferência em CUDA + FP16 pelo Ultralytics. (Não há PyCUDA nem pinned memory no código; a nota antiga estava errada.)
 - <span style="color: #CC5500;">**Zero Hardcode (Fases 5.1 e 6):**</span> Injeção de `config.json` para cooldowns externos, controle do motor de FPS e atalhos dinâmicos do perfil do Pokémon. O método de buff permite atualização sem restart.
 - <span style="color: #CC5500;">**Hotkeys Thread-Safe (Fase 6):**</span> Uso da biblioteca `keyboard` mapeando atalhos para interações blindadas no loop do asyncio usando `asyncio.Event()` e `loop.call_soon_threadsafe()`. 
 
@@ -55,7 +55,7 @@
 - <span style="color: #CC5500;">**Decisões Arquiteturais Tomadas:**</span> 
   1. <span style="color: #CC5500;">**Refatoração do Motor de Decisão:**</span> O antigo arquivo síncrono `core/decision_thread.py` foi reescrito totalmente para `asyncio` e plugado na threadpool principal do `main.py`, substituindo o *stub* genérico anterior.
   2. <span style="color: #CC5500;">**Foco Tático no Summon:**</span> O gatilho de ataque e proteção (`is_boxed`) reage estritamente à proximidade dos monstros em relação ao Summon, garantindo a sobrevivência em lures massivos.
-  3. <span style="color: #CC5500;">**Sobrescrita de Cooldown (Emergency Reset):**</span> Criação da função `force_reset_all_timers()` no Orquestrador. Em cenários de desespero (Dense Lure), o bot não respeita delays padronizados, executando uma rajada instantânea de Defesa + Combo + Revive.
+  3. <span style="color: #CC5500;">**Sobrescrita de Cooldown (Emergency Reset):**</span> ~~`force_reset_all_timers()`~~ — **removido na Fase 14**: zerava todas as recargas a cada frame cercado e gerava rajadas acima do limite humano.
   4. <span style="color: #CC5500;">**Atalhos do Cavebot:**</span> Os atalhos F10 (Record) e F11 (Play) solicitados na Fase 9 foram oficializados globalmente no `main.py`.
 - <span style="color: #CC5500;">**Componentes Finalizados:**</span>
   - Modificação em `core/action_orchestrator.py` (`force_reset_all_timers()`).
@@ -139,3 +139,17 @@
   4. <span style="color: #CC5500;">**Botões de teste:**</span> `POST /api/heal/test` (curador / farm / rotina completa) com 3s de espera.
 - <span style="color: #CC5500;">**Bloqueios:**</span> sem modelo YOLO treinado, "área limpa" é sempre verdadeiro; confirmar no jogo se um clique simples na Pokébar troca o pokémon.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Validar a cura no jogo; poção pelo HP vermelho; dataset + treino do YOLO.
+
+## <span style="color: #CC5500;">**Handoff: Fase 14 (Auditoria + Limites Humanos)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída no código (2026-10-09); falta validar no jogo.
+- <span style="color: #CC5500;">**Correções:**</span>
+  1. <span style="color: #CC5500;">**Rajada sem cooldown:**</span> `force_reset_all_timers()` rodava depois de toda defesa cercada, então defesa/combo/revive eram reapertados a cada frame (~30/s). Removido.
+  2. <span style="color: #CC5500;">**Mouse lento e robótico:**</span> o `pydirectinput.PAUSE` padrão (0,1 s) dormia em cada ponto da curva: movimentos de 2 a 10 s. Agora `PAUSE = 0`.
+  3. <span style="color: #CC5500;">**Rota dupla:**</span> parar e dar play (ou a cura retomando a rota) deixava o loop antigo vivo: duas rotas clicando juntas. Corrigido com geração por play.
+  4. <span style="color: #CC5500;">**Esperas fixas:**</span> `sleep(0.1)` da pokébola, tempos da rota e da rotação de cura agora variam.
+  5. <span style="color: #CC5500;">**Teclas de 0 ms:**</span> `keyboard.send` trocado por pressionar/segurar/soltar com tempo gaussiano.
+  6. <span style="color: #CC5500;">**Monitor errado:**</span> captura usava `mss.monitors[1]`, que nem sempre é o principal. Novo `engine.monitor` (0 = principal automático) e aviso no log se o jogo estiver em outro monitor.
+  7. <span style="color: #CC5500;">**Falso GM:**</span> "gm" dentro de "segmento" ou "tutor" dentro de "tutorial" desligavam o bot. Agora só palavra inteira.
+  8. <span style="color: #CC5500;">**Código morto:**</span> removidos `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`, `modules/ui_analyzer.py`, `scratch/` e seus testes; dependências `scikit-fuzzy`, `scikit-learn`, `bezier`, `py_trees` fora do `requirements.txt`.
+- <span style="color: #CC5500;">**Novo:**</span> `core/humanizer.py` (APM, reação, intervalos, recarga com folga, mira, ritmo por sessão e cansaço) + seção **Ajustes → Comportamento humano** no console.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Respostas da anamnese (`docs/ANAMNESE.md` / documento compartilhado) e a pesquisa de estado da arte (`docs/PROMPT_PESQUISA.md`); depois dataset + treino do YOLO.

@@ -25,7 +25,8 @@ DEFAULT_CONFIG = {
         "auto_combo": 2.0, "defensive_buff": 10.0, "stance": 2.0,
     },
     "hotkeys": {"pause": "f8", "kill": "f9", "record": "f10", "play": "f11", "catch_key": "f4"},
-    "engine": {"fps_target": 30, "offensive_mode": False, "model_path": "models/otp_yolo.pt", "confidence": 0.5},
+    # monitor 0 = automático (o principal do Windows, único que os cliques alcançam)
+    "engine": {"fps_target": 30, "offensive_mode": False, "model_path": "models/otp_yolo.pt", "confidence": 0.5, "monitor": 0},
     "pokemon_profile": {
         "auto_combo_key": "f1",
         "revive_key": "f2",
@@ -45,6 +46,8 @@ DEFAULT_CONFIG = {
         # Desligado por padrão: o jogador liga depois de conferir a leitura da postura na Calibração
         "stance": {"auto": False, "normal": "offensive", "lure": "defensive", "combo": "offensive"},
         "catch": {"enabled": True},
+        # Limites humanos de todas as entradas (core/humanizer.py)
+        "human": {"max_apm": 180, "reaction_ms": 240, "cooldown_jitter_pct": 12, "hesitation": True},
         "safety": {"gm_monitor": True, "chat_roi": [10, 600, 400, 30]},
         # Planejados: a UI já salva, o bot ainda não executa
         "target": {"auto_target": False, "range": 7, "ignore": [], "shiny_priority": False, "shiny_words": ["shiny"]},
