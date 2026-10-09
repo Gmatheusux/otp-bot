@@ -17,7 +17,8 @@ export function StatusBadge({ status }) {
 
 export function Card({ title, description, status, children, footer }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-base-800 bg-base-900 shadow-panel">
+    // Sem overflow-hidden: o seletor de tecla abre por cima da borda do cartão
+    <section className="rounded-2xl border border-base-800 bg-base-900 shadow-panel">
       {title && (
         <header className="flex items-start justify-between gap-4 border-b border-base-800 px-5 py-4">
           <div className="min-w-0">
@@ -41,7 +42,7 @@ export default function Section({ section }) {
       status={section.status}
       footer={
         section.status === 'planejado' && (
-          <p className="border-t border-base-800 bg-base-950/40 px-5 py-3 text-xs text-base-500">
+          <p className="rounded-b-2xl border-t border-base-800 bg-base-950/40 px-5 py-3 text-xs text-base-500">
             Suas escolhas já ficam salvas. O bot passa a usar quando esta função for implementada.
           </p>
         )

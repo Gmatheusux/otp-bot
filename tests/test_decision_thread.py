@@ -42,6 +42,7 @@ def run_one_frame(detections, navigator, config_patch=None):
         telemetry = {}
         config = ConfigManager.__new__(ConfigManager)._default_config()
         config["cooldowns"] = {}  # mantém os cooldowns de 10s registrados acima
+        config["pokemon_profile"]["defensive_buff_key"] = "f3"
         if config_patch:
             config_patch(config)
 
@@ -89,6 +90,17 @@ def test_limiar_de_cercado_vem_da_config():
     pressed, telemetry = run_one_frame([det(0, 0.5, 0.5)] + mobs, FakeNavigator(), three_mobs_is_boxed)
     assert telemetry["is_boxed"] is True
     assert pressed == ["f3", "f1", "f2"]
+
+
+def test_tecla_nao_definida_nao_e_apertada():
+    def no_defense_key(config):
+        config["pokemon_profile"]["defensive_buff_key"] = ""
+    mobs = [det(1, 0.5 + 0.01 * i, 0.5) for i in range(8)]
+    with patch.object(dt.keyboard, "send") as send:
+        asyncio.run(dt.press_key_action(""))
+    send.assert_not_called()
+    pressed, _ = run_one_frame([det(0, 0.5, 0.5)] + mobs, FakeNavigator(), no_defense_key)
+    assert "f1" in pressed and "f2" in pressed
 
 
 def test_sem_deteccoes_nao_faz_nada():

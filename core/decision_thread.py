@@ -12,6 +12,8 @@ logger = logging.getLogger("DecisionThread")
 
 async def press_key_action(key: str):
     """Corrotina helper para apertar tecla de forma não-bloqueante."""
+    if not key:
+        return  # tecla ainda não escolhida no console; o aviso já sai no log
     await asyncio.to_thread(keyboard.send, key)
 
 async def auto_catch_action(mouse_controller: MouseController, catch_key: str, screen_x: int, screen_y: int):
@@ -58,7 +60,7 @@ async def decision_thread(
             catch_enabled = config.get("features", {}).get("catch", {}).get("enabled", True)
             auto_combo_key = profile.get("auto_combo_key", "f1")
             revive_key = profile.get("revive_key", "f2")
-            defensive_buff_key = profile.get("defensive_buff_key", "f3")
+            defensive_buff_key = profile.get("defensive_buff_key", "")
             catch_key = config.get("hotkeys", {}).get("catch_key", "f4")
             orchestrator.sync_cooldowns(config.get("cooldowns", {}))
             spatial.radius_threshold = combat.get("boxed_radius_pct", 15) / 100.0

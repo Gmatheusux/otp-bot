@@ -27,7 +27,7 @@ DEFAULT_CONFIG = {
     "pokemon_profile": {
         "auto_combo_key": "f1",
         "revive_key": "f2",
-        "defensive_buff_key": "f3",
+        "defensive_buff_key": "",  # sem padrão: o jogador escolhe no console
     },
     "features": {
         # Lidos ao vivo pela decision_thread

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useConfigField } from '../context/ConfigContext.jsx'
 import Icon from './Icon.jsx'
 
@@ -204,42 +204,137 @@ function toKeyName(event) {
   return [...mods, name].join('+')
 }
 
-function KeyCapture({ value, onChange, disabled }) {
-  const [listening, setListening] = useState(false)
+const range = (n) => Array.from({ length: n }, (_, i) => i + 1)
+const KEY_GROUPS = [
+  { label: 'Teclas F', keys: range(12).map((i) => `f${i}`) },
+  { label: 'Ctrl + F', keys: range(12).map((i) => `ctrl+f${i}`) },
+  { label: 'Shift + F', keys: range(12).map((i) => `shift+f${i}`) },
+  { label: 'Números', keys: [...range(9).map(String), '0'] },
+]
 
+function keyLabel(key) {
+  return key.split('+').map((part) => part.toUpperCase()).join(' + ')
+}
+
+/** Escolha a tecla numa lista ou aperte a tecla desejada. */
+function KeyPicker({ value, onChange, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [listening, setListening] = useState(false)
+  const rootRef = useRef(null)
+
+  const close = () => {
+    setOpen(false)
+    setListening(false)
+  }
+  const pick = (key) => {
+    onChange(key)
+    close()
+  }
+
+  // Fecha ao clicar fora
   useEffect(() => {
-    if (!listening) return
+    if (!open) return
+    const onMouseDown = (event) => {
+      if (!rootRef.current?.contains(event.target)) close()
+    }
+    document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [open])
+
+  // Esc fecha; no modo captura, a próxima tecla vira a escolhida
+  useEffect(() => {
+    if (!open) return
     const onKeyDown = (event) => {
-      event.preventDefault()
-      event.stopPropagation()
       if (event.key === 'Escape' && !event.ctrlKey && !event.altKey) {
-        setListening(false)
+        event.preventDefault()
+        close()
         return
       }
+      if (!listening) return
+      event.preventDefault()
+      event.stopPropagation()
       const name = toKeyName(event)
-      if (name) {
-        onChange(name)
-        setListening(false)
-      }
+      if (name) pick(name)
     }
     window.addEventListener('keydown', onKeyDown, true)
     return () => window.removeEventListener('keydown', onKeyDown, true)
-  }, [listening, onChange])
+  }, [open, listening])
+
+  const unset = !value
 
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => setListening((v) => !v)}
-      onBlur={() => setListening(false)}
-      className={`min-w-[7rem] rounded-lg border px-3 py-1.5 font-mono text-sm transition-colors disabled:opacity-40 ${
-        listening
-          ? 'animate-pulse border-accent-500 bg-accent-500/10 text-accent-300'
-          : 'border-base-700 bg-base-950 text-base-100 hover:border-base-600'
-      }`}
-    >
-      {listening ? 'aperte a tecla…' : (value || 'definir').toUpperCase()}
-    </button>
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => (open ? close() : setOpen(true))}
+        className={`inline-flex min-w-[8rem] items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors disabled:opacity-40 ${
+          unset
+            ? 'border-amber-500/50 bg-amber-500/10 text-amber-200 hover:bg-amber-500/15'
+            : 'border-base-700 bg-base-950 font-mono text-base-100 hover:border-base-600'
+        }`}
+      >
+        {unset ? 'Escolher tecla' : keyLabel(value)}
+        <Icon name="chevron" className={`h-3.5 w-3.5 text-base-500 transition-transform ${open ? '-rotate-90' : 'rotate-90'}`} />
+      </button>
+
+      {open && (
+        <div
+          role="dialog"
+          aria-label="Escolher tecla"
+          className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-base-700 bg-base-900 p-3 shadow-panel"
+        >
+          <button
+            type="button"
+            onClick={() => setListening((v) => !v)}
+            className={`mb-3 w-full rounded-lg border px-3 py-2 text-sm transition-colors ${
+              listening
+                ? 'animate-pulse border-accent-500 bg-accent-500/10 text-accent-300'
+                : 'border-base-700 text-base-200 hover:bg-base-800'
+            }`}
+          >
+            {listening ? 'Aperte a tecla agora…' : 'Apertar a tecla no teclado'}
+          </button>
+
+          <div className="space-y-3">
+            {KEY_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wider text-base-500">{group.label}</p>
+                <div className="grid grid-cols-6 gap-1">
+                  {group.keys.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => pick(key)}
+                      title={keyLabel(key)}
+                      className={`rounded-md border px-1 py-1.5 font-mono text-[11px] transition-colors ${
+                        key === value
+                          ? 'border-accent-500/60 bg-accent-500/15 text-accent-300'
+                          : 'border-base-800 text-base-300 hover:bg-base-800 hover:text-base-100'
+                      }`}
+                    >
+                      {key.replace('ctrl+', '').replace('shift+', '').toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {!unset && (
+            <button
+              type="button"
+              onClick={() => pick('')}
+              className="mt-3 w-full rounded-lg px-3 py-1.5 text-xs text-base-500 hover:bg-base-800 hover:text-base-300"
+            >
+              Deixar sem tecla (o bot não usa esta ação)
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -303,7 +398,7 @@ export function Field({ field }) {
       control = <TextInput value={value} onChange={setValue} placeholder={field.placeholder} disabled={disabled} wide={field.wide} />
       break
     case 'key':
-      control = <KeyCapture value={value} onChange={setValue} disabled={disabled} />
+      control = <KeyPicker value={value} onChange={setValue} disabled={disabled} />
       break
     case 'segmented':
       stacked = Boolean(field.columns)

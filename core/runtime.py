@@ -111,6 +111,7 @@ class BotRuntime:
         }
         for label, key in keys.items():
             if not key:
+                logger.warning(f"Tecla de {label} não definida: o bot não vai usar essa ação. Escolha na aba Atalhos.")
                 continue
             try:
                 keyboard.key_to_scan_codes(key)

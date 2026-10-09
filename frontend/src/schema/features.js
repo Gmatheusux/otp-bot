@@ -242,7 +242,7 @@ export const TABS = [
     id: 'atalhos',
     label: 'Atalhos',
     icon: 'keyboard',
-    description: 'Clique no botão e aperte a tecla desejada. Esc cancela.',
+    description: 'Clique no campo e escolha a tecla na lista, ou aperte a tecla no teclado.',
     sections: [
       {
         title: 'Controle do bot',

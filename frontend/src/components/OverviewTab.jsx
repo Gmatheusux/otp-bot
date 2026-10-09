@@ -4,6 +4,14 @@ import { Card } from './Section.jsx'
 import TelemetryPanel from './TelemetryPanel.jsx'
 import LogPanel from './LogPanel.jsx'
 import Icon from './Icon.jsx'
+import { getPath } from '../lib/config.js'
+
+const GAME_KEYS = [
+  { path: 'pokemon_profile.auto_combo_key', label: 'Combo' },
+  { path: 'pokemon_profile.defensive_buff_key', label: 'Defesa' },
+  { path: 'pokemon_profile.revive_key', label: 'Revive' },
+  { path: 'hotkeys.catch_key', label: 'Pokébola' },
+]
 
 const QUICK = [
   { path: 'features.combat.auto_combo', label: 'Combo automático', hint: 'Ataca selvagens com o combo', tab: 'combate' },
@@ -46,10 +54,21 @@ export default function OverviewTab({ status, offline, logs, connected, control,
   const hotkeys = config?.hotkeys ?? {}
   const modelPath = config?.engine?.model_path ?? 'models/otp_yolo.pt'
   const running = status?.running
+  const missingKeys = config
+    ? GAME_KEYS.filter((k) => !getPath(config, k.path)).map((k) => k.label)
+    : []
 
   return (
     <div className="space-y-5">
       {offline && <Notice tone="error">Sem conexão com o bot. Ele pode ter sido desligado; abra de novo pelo main.py.</Notice>}
+      {missingKeys.length > 0 && (
+        <Notice tone="warn">
+          Falta escolher a tecla de {missingKeys.join(', ')}. Sem ela o bot pula essa ação.{' '}
+          <button type="button" onClick={() => onNavigate('atalhos')} className="font-medium underline underline-offset-2 hover:text-amber-100">
+            Escolher em Atalhos
+          </button>
+        </Notice>
+      )}
       {!offline && status?.device === 'mock' && (
         <Notice tone="warn">
           Nenhum modelo de visão carregado ({modelPath}). O bot roda, mas ainda não enxerga selvagens nem corpos.
