@@ -63,7 +63,33 @@ entendeu do escopo, o que vai fazer e o que está fora do escopo.
 14. Commit semântico (`feat(eXX): …`, `docs(eXX): …`) e, se houver remoto, push. Pedir confirmação ao usuário antes do push.
 15. Dizer ao usuário qual é a próxima etapa e o que ele precisa providenciar para ela.
 
-### 1.3 Regras para não alucinar
+### 1.3 Conversa central (orquestração)
+
+Existe **uma conversa central** que não executa etapas: ela coordena. Cada etapa roda numa conversa própria, aberta
+por um card de sessão (o app cria a worktree sozinho).
+
+**Papel da central, a cada etapa que termina:**
+1. Reler este guia na `main` (nunca confiar na memória da conversa).
+2. Conferir o portão de qualidade:
+   - a etapa está ✅ na §4 (ou 🟡 com o que faltou) e tem entrada na §7;
+   - o merge da branch da etapa chegou à `main` e foi enviado (`git log origin/main`);
+   - `python -m pytest` passa na `main`;
+   - links dos documentos e diagramas Mermaid continuam válidos, se a etapa mexeu neles.
+3. Se o portão falhar: avisar o usuário e corrigir (ou abrir um card de correção) antes de liberar a próxima.
+4. Se passar: abrir o card da(s) próxima(s) etapa(s) com o prompt de `docs/PROMPTS.md`, respeitando as dependências
+   da §4 e o material do jogo disponível (§6). Depois da E03, abrir em paralelo as frentes independentes.
+5. Dizer ao usuário o que ele precisa ter em mãos para a etapa aberta (jogo aberto, prints etc.).
+
+A central não edita código. Só ajusta o guia e os documentos quando o plano muda, sempre com commit e push.
+
+**Prompt para abrir uma central nova** (se a atual ficar longa demais):
+
+```
+Você é a conversa central do OTP Bot. Leia o GUIA.md inteiro, em especial a §1.3. Não execute etapas: confira o
+estado do projeto, rode o portão de qualidade da última etapa concluída e me diga qual card de etapa abrir em seguida.
+```
+
+### 1.4 Regras para não alucinar
 - O que existe no código se confirma **abrindo o arquivo**, não pela memória nem por este guia.
 - Números (tamanhos de região, tempos, limites) vêm da config, da especificação ou de medição. Se forem estimativa,
   dizer que são.
