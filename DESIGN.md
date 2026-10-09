@@ -8,6 +8,8 @@ stack:
   - pydirectinput
   - scikit-fuzzy
   - bezier
+  - fastapi
+  - react
 architecture_style: hybrid_cv_utility_ai
 ---
 
@@ -29,3 +31,11 @@ architecture_style: hybrid_cv_utility_ai
 ## <span style="color: #CC5500;">**Modo Companion e Aprendizado**</span>
 - <span style="color: #CC5500;">**Controle Compartilhado:**</span> O bot deve detectar inputs do jogador (modo Companion) e ceder o controle, assumindo tarefas delegadas de forma transparente.
 - <span style="color: #CC5500;">**Eventos Estruturados:**</span> O aprendizado do bot não usará Imitation Learning via pixels brutos. Ele gravará logs de eventos (ex: "6 bichos, vida em 72%, jogador apertou m4") para gerar regras editáveis via Decision Trees.
+
+## <span style="color: #CC5500;">**Segurança e Evasão (Kill Event)**</span>
+- <span style="color: #CC5500;">**Anti-Ban Assíncrono:**</span> Leitura de chat para identificação de Game Masters opera com Zero-Bloat. Ferramentas pesadas como Tesseract operam estritamente após filtros de diferença de pixel (MSE), economizando CPU para o Core de Combate.
+
+## <span style="color: #CC5500;">**Interface Gráfica Integrada (Dashboard React + API FastAPI)**</span>
+- <span style="color: #CC5500;">**Bot com GUI Própria:**</span> O bot não é mais apenas um script headless: possui uma Interface Gráfica Integrada (`frontend/`, React + Vite + Tailwind) que roda localmente e se comunica com o `core/api_server.py` (FastAPI) via HTTP/WebSocket, sem depender de processos externos de terceiros.
+- <span style="color: #CC5500;">**Fonte Única de Verdade:**</span> O `config.json` em disco é a fonte de verdade. A UI nunca mantém estado de configuração divergente: lê via `GET /api/config` no mount (`useBotConfig`) e grava via `POST /api/config` a cada alteração do usuário (ex: Delay do Revive, Ofensividade), com o backend sobrescrevendo o arquivo inteiro a cada chamada.
+- <span style="color: #CC5500;">**Telemetria em Tempo Real:**</span> O `ConnectionManager` do `api_server.py` expõe `/ws/logs` para transmitir decisões do orquestrador para o Dashboard sem HTTP Polling, mantendo a UI reativa ao estado real de execução do bot.

@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Logs e saídas locais
+*.log
+logs/
+
+# Modelos de IA (pesados; versionar à parte ou com Git LFS)
+models/*.pt
+models/*.engine
+models/*.onnx
+
+# Dados locais do bot
+route.json
+
+# Worktrees do fluxo Zero Trust
+.worktrees/

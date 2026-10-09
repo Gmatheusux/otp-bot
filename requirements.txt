@@ -1,11 +1,20 @@
+# PyTorch com CUDA (RTX 50xx / Blackwell precisa de CUDA 12.8+). Instale ANTES do resto:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu130
+ultralytics
 opencv-python
 numpy
+mss
 pydirectinput
+pyautogui
+keyboard
+pywin32
 pytesseract
 scikit-fuzzy
-bezier
-pyautogui
-py_trees
 scikit-learn
-mss
-pywin32
+bezier
+py_trees
+fastapi
+uvicorn[standard]
+pydantic
+pywebview
+pytest

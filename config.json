@@ -1,0 +1,106 @@
+{
+    "cooldowns": {
+        "heal": 2,
+        "attack": 1.5,
+        "loot": 0.5,
+        "catch": 1,
+        "revive": 5,
+        "auto_combo": 2,
+        "defensive_buff": 10
+    },
+    "hotkeys": {
+        "pause": "f8",
+        "kill": "f9",
+        "record": "f10",
+        "play": "f11",
+        "catch_key": "f4"
+    },
+    "engine": {
+        "fps_target": 30,
+        "offensive_mode": false,
+        "model_path": "models/otp_yolo.pt",
+        "confidence": 0.5
+    },
+    "pokemon_profile": {
+        "auto_combo_key": "f1",
+        "revive_key": "f2",
+        "defensive_buff_key": "f3"
+    },
+    "features": {
+        "combat": {
+            "auto_combo": true,
+            "kite_combo": true,
+            "boxed_defense": true,
+            "boxed_mobs": 8,
+            "boxed_radius_pct": 15,
+            "revive_on_boxed": true,
+            "stop_route_when_boxed": true
+        },
+        "catch": {
+            "enabled": true
+        },
+        "safety": {
+            "gm_monitor": true,
+            "chat_roi": [
+                10,
+                600,
+                400,
+                30
+            ]
+        },
+        "target": {
+            "auto_target": false,
+            "range": 7,
+            "ignore": [],
+            "shiny_priority": false,
+            "shiny_words": [
+                "shiny"
+            ]
+        },
+        "heal": {
+            "potion": {
+                "enabled": false,
+                "hp_percent": 60,
+                "key": "f5"
+            },
+            "player_regen": {
+                "enabled": false,
+                "hp_percent": 90,
+                "skill_key": "f6",
+                "only_out_of_battle": true
+            },
+            "medicine": {
+                "enabled": false,
+                "key": "f7"
+            }
+        },
+        "route": {
+            "loop": true,
+            "wait_first_waypoint": false,
+            "vary_path": false,
+            "vary_sqm": 1
+        },
+        "alerts": {
+            "player_on_screen": true,
+            "gm_message": true,
+            "private_message": false,
+            "death": true,
+            "sound": true,
+            "volume": 100,
+            "telegram": false,
+            "telegram_chat_id": ""
+        },
+        "extras": {
+            "food": {
+                "enabled": false,
+                "key": "",
+                "interval_s": 300
+            }
+        },
+        "guild": {
+            "daily": false,
+            "tier": "normal",
+            "element": "normal"
+        }
+    }
+}
