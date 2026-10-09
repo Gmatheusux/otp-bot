@@ -139,3 +139,9 @@
   4. <span style="color: #CC5500;">**Botões de teste:**</span> `POST /api/heal/test` (curador / farm / rotina completa) com 3s de espera.
 - <span style="color: #CC5500;">**Bloqueios:**</span> sem modelo YOLO treinado, "área limpa" é sempre verdadeiro; confirmar no jogo se um clique simples na Pokébar troca o pokémon.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Validar a cura no jogo; poção pelo HP vermelho; dataset + treino do YOLO.
+
+## <span style="color: #CC5500;">**Handoff: E00 (Análise e Arquitetura)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-09).
+- <span style="color: #CC5500;">**Resumo:**</span> Análise de um bot externo (playlist, 11 vídeos via Gemini), anamnese respondida, especificação da v1.0, arquitetura v2 (D1–D19 aprovadas) e plano em 17 etapas. A partir daqui o plano e o estado vivem no **`GUIA.md`**; este diário recebe uma entrada curta por etapa.
+- <span style="color: #CC5500;">**Bloqueios:**</span> Git com "dubious ownership"; material do jogo pendente.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E01 (git, spike de entrada sem foco, janela do jogo).

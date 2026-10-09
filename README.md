@@ -318,6 +318,10 @@ As abas e os campos do console vêm de `frontend/src/schema/features.js`: para e
 
 | Arquivo | Conteúdo |
 |---|---|
+| **`GUIA.md`** | **Documento-mestre:** estado atual, etapas E01–E17 da v1.0, protocolo de cada conversa e registro de passagem. |
+| `docs/ESPECIFICACAO.md` | Regras do jogo e do bot da v1.0 (da anamnese). |
+| `docs/ARQUITETURA.md` | Arquitetura alvo, executável, riscos e decisões. |
+| `docs/analise-bot-externo/` | Comparativo com um bot externo e relatórios dos vídeos. |
 | `ActiveContext.md` | Diário das fases: decisões tomadas, bloqueios e próximos passos. |
 | `DESIGN.md` | Diretrizes de arquitetura. |
 | `task.md` | Fluxo de trabalho do projeto. |
