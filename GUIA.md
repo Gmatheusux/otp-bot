@@ -24,7 +24,8 @@
 
 ### 1.1 Para você, ao abrir uma conversa nova
 
-Cole esta mensagem, trocando o número da etapa:
+Use o prompt da etapa em **[`docs/PROMPTS.md`](docs/PROMPTS.md)**: há um para cada etapa, com os pontos de atenção
+específicos dela. Se preferir a versão genérica, cole esta mensagem trocando o número da etapa:
 
 ```
 Vamos executar a etapa E0X do OTP Bot. Leia o GUIA.md inteiro e os documentos que a etapa E0X lista em
@@ -78,6 +79,7 @@ entendeu do escopo, o que vai fazer e o que está fora do escopo.
 | **`GUIA.md`** (este) | Plano, estado, etapas e passagens | Toda conversa, no fim |
 | `docs/ESPECIFICACAO.md` | Regras do jogo e do bot (o "o quê") | Quando um fato ou regra muda |
 | `docs/ARQUITETURA.md` | Arquitetura, decisões D1–D19, riscos (o "como") | Quando a arquitetura muda |
+| `docs/PROMPTS.md` | Prompt de início de cada etapa | Quando uma etapa mudar de escopo |
 | `docs/analise-bot-externo/` | Comparativo com o bot externo + 11 relatórios de vídeo | Referência; não muda |
 | `ActiveContext.md` | Diário histórico das sessões | Toda conversa, uma entrada curta |
 | `CLAUDE.md` | Carregado automaticamente; aponta para este guia | Só se o protocolo mudar |
