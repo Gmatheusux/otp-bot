@@ -96,7 +96,7 @@ async def decision_thread(
                 current = telemetry.get("readings", {}).get("stance")
                 # Sem leitura confiável da postura atual, não clica no escuro
                 if desired in STANCES and current and current != desired and orchestrator.can_execute("stance"):
-                    point = region_point(config.get("calibration", {}), "stance", screen_w, STANCES.index(desired))
+                    point = region_point(config.get("calibration", {}), "stance", screen_w, screen_h, STANCES.index(desired))
                     if point:
                         logger.info(f">>> [POSTURA] {STANCE_LABELS[current]} -> {STANCE_LABELS[desired]} (fase: {phase}) <<<")
                         await orchestrator.execute("stance", click_action, mouse_controller, point)

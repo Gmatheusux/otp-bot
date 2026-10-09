@@ -120,3 +120,12 @@
   4. <span style="color: #CC5500;">**Captura de tecla:**</span> campos de tecla capturam o pressionamento e convertem para nomes da lib `keyboard`; o backend avisa no log teclas inválidas.
 - <span style="color: #CC5500;">**Ambiente:**</span> PyTorch `2.14.1+cu130` validado na RTX 5060 Ti (sm_120); `pywebview` e `websockets` instalados.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Dataset + treino do YOLO (classes: summon, selvagem, corpo) e leitura de HP/coordenadas via ROI (minimapa exibe `x, y, z`).
+
+## <span style="color: #CC5500;">**Handoff: Fase 12 (Itens por Sprite + Calibração por Resolução + Postura)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-08).
+- <span style="color: #CC5500;">**Decisões Arquiteturais Tomadas:**</span>
+  1. <span style="color: #CC5500;">**Sprites:**</span> `modules/sprite_library.py` guarda recortes em `assets/sprites/` (índice `sprites.json`, fora do `config.json` para o POST de config não apagar). Template matching `TM_CCOEFF_NORMED` + supressão de não-máximos. I/O via `imencode/imdecode` porque o caminho tem acento.
+  2. <span style="color: #CC5500;">**UI não escala com o monitor:**</span> painéis têm o mesmo tamanho em pixels em 1920×1080 e 3440×1440. Calibração virou `calibration.profiles["LxA"]` em pixels reais, escolhido pelo tamanho do frame (fallback: largura mais próxima, escalado). Migração automática do formato antigo (`base_width`).
+  3. <span style="color: #CC5500;">**Painel Pokémon (confirmado pelo jogador):**</span> barra vermelha = HP do jogador, azul = HP do pokémon; mãos = ofensivo (vermelha) / neutro (cinza) / defensivo (verde). Mão ativa detectada pela mediana do brilho do fundo pouco saturado.
+  4. <span style="color: #CC5500;">**Postura automática:**</span> fases `normal | lure | combo` → postura configurável; só clica com leitura confiável e respeitando o cooldown `stance`. Desligada por padrão.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> Cura automática (poção pelo HP vermelho, revive pelo HP azul / Pokébar) usando os sprites da aba Itens.

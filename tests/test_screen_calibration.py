@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from modules.screen_calibration import active_slot, bar_fill, read_regions
+from modules.screen_calibration import active_slot, bar_fill, migrate_calibration, pick_profile, read_regions
 
 GREEN = (0, 200, 0)    # BGR
 YELLOW = (0, 190, 240)
@@ -52,15 +52,31 @@ def test_sem_destaque_nao_chuta_postura():
     assert active_slot(img, 3) is None
 
 
-def test_escala_pela_largura_da_tela():
-    # Referência de 1000px; frame real com o dobro do tamanho
-    calibration = {
-        "base_width": 1000,
-        "regions": {
-            "player_hp": {"x": 100, "y": 50, "w": 100, "h": 8},
-            "team": {"x": 10, "y": 100, "w": 100, "h": 40, "slots": 2},
-        },
-    }
+def test_escolhe_o_perfil_da_resolucao():
+    calibration = {"profiles": {
+        "3440x1440": {"width": 3440, "height": 1440, "regions": {}},
+        "1920x1080": {"width": 1920, "height": 1080, "regions": {}},
+    }}
+    assert pick_profile(calibration, 1920, 1080)[:2][0] == "1920x1080"
+    assert pick_profile(calibration, 3440, 1440)[0] == "3440x1440"
+    key, _, scale = pick_profile(calibration, 2560, 1440)  # sem perfil: o de largura mais próxima
+    assert key == "1920x1080" and abs(scale - 2560 / 1920) < 1e-9
+
+
+def test_migra_calibracao_antiga_para_perfil_3440():
+    old = {"base_width": 2000, "summon_name": "Megaclefable",
+           "regions": {"player_hp": {"x": 100, "y": 50, "w": 10, "h": 10}}}
+    new = migrate_calibration(old)
+    assert new["profiles"]["3440x1440"]["regions"]["player_hp"] == {"x": 172, "y": 86, "w": 17, "h": 17}
+    assert "1920x1080" in new["profiles"]
+
+
+def test_escala_quando_nao_ha_perfil_da_resolucao():
+    # Perfil de 1000px; frame real com o dobro do tamanho
+    calibration = {"profiles": {"1000x500": {"width": 1000, "height": 500, "regions": {
+        "player_hp": {"x": 100, "y": 50, "w": 100, "h": 8},
+        "team": {"x": 10, "y": 100, "w": 100, "h": 40, "slots": 2},
+    }}}}
     frame = np.zeros((400, 2000, 3), dtype=np.uint8)
     frame[100:116, 200:400] = bar(200, 50, RED, height=16)  # HP do jogador é a barra vermelha
     frame[200:240, 20:220] = bar(200, 100, GREEN, height=40)

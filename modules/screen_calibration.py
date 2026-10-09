@@ -1,11 +1,13 @@
 """
 modules/screen_calibration.py — Regiões fixas da interface do jogo e leitura das barras por cor.
 
-As regiões são guardadas em pixels de uma imagem de referência (base_width). Na tela real,
-tudo é escalado pela largura: o cliente do jogo cresce proporcionalmente a partir do canto
-superior esquerdo (ex: referência de 2000px, monitor de 3440px -> escala 1.72).
+A interface do cliente NÃO cresce com o monitor: os painéis têm o mesmo tamanho em pixels em
+qualquer resolução; o que muda é a área do jogo e a posição do que fica à direita/embaixo.
+Por isso há um perfil de regiões por resolução (em pixels reais da tela), escolhido pelo
+tamanho do frame. Uma resolução sem perfil usa o mais próximo, escalado pela largura.
 """
-from typing import Dict, List, Optional
+import copy
+from typing import Dict, List, Optional, Tuple
 
 import cv2
 import numpy as np
@@ -18,32 +20,10 @@ COLOR_RANGES = {
     "blue": [((95, 90, 90), (130, 255, 255))],
 }
 
-# Valores medidos no print de referência do jogador (2000x799, Poke Alliance)
-DEFAULT_CALIBRATION = {
-    "base_width": 2000,
-    "summon_name": "Megaclefable",
-    "regions": {
-        "game_area": {"x": 318, "y": 2, "w": 1360, "h": 714},
-        # Painel "Pokémon": vermelha = HP do jogador, azul = HP do pokémon (confirmado pelo jogador)
-        "player_hp": {"x": 45, "y": 36, "w": 60, "h": 10},
-        "pokemon_hp": {"x": 45, "y": 49, "w": 61, "h": 9},
-        # Mãos de postura: vermelha ofensivo, cinza neutro, verde defensivo
-        "stance": {"x": 46, "y": 63, "w": 56, "h": 18, "slots": 3},
-        "exp_bar": {"x": 726, "y": 685, "w": 718, "h": 7},
-        "team": {"x": 22, "y": 104, "w": 71, "h": 144, "slots": 5},
-        "battle_list": {"x": 0, "y": 290, "w": 105, "h": 160},
-        "skills": {"x": 668, "y": 425, "w": 185, "h": 22},
-        "hotbar": {"x": 545, "y": 693, "w": 910, "h": 22},
-        "minimap": {"x": 1776, "y": 22, "w": 208, "h": 146},
-        "coords": {"x": 1775, "y": 18, "w": 62, "h": 12},
-        "chat": {"x": 240, "y": 740, "w": 800, "h": 38},
-    },
-}
-
 # Como cada região é lida
 REGION_KINDS = {
-    "player_hp": ("bar", "red"),
-    "pokemon_hp": ("bar", "blue"),
+    "player_hp": ("bar", "red"),      # painel Pokémon: barra vermelha = HP do jogador
+    "pokemon_hp": ("bar", "blue"),    # painel Pokémon: barra azul = HP do pokémon
     "exp_bar": ("bar", "yellow"),
     "team": ("slots", "green"),
     "stance": ("stance", None),
@@ -53,8 +33,83 @@ REGION_KINDS = {
 STANCES = ("offensive", "neutral", "defensive")
 
 
+def _scaled(regions: Dict, factor: float) -> Dict:
+    out = {}
+    for name, region in regions.items():
+        r = dict(region)
+        for k in ("x", "y", "w", "h"):
+            r[k] = int(round(region[k] * factor))
+        out[name] = r
+    return out
+
+
+# 3440x1440: medido no print do jogador, que veio reduzido para 2000px de largura (fator 1.72)
+_REGIONS_3440_AT_2000 = {
+    "game_area": {"x": 318, "y": 2, "w": 1360, "h": 714},
+    "player_hp": {"x": 45, "y": 36, "w": 60, "h": 10},
+    "pokemon_hp": {"x": 45, "y": 49, "w": 61, "h": 9},
+    "stance": {"x": 46, "y": 63, "w": 56, "h": 18, "slots": 3},
+    "exp_bar": {"x": 726, "y": 685, "w": 718, "h": 7},
+    "team": {"x": 22, "y": 104, "w": 71, "h": 144, "slots": 5},
+    "battle_list": {"x": 0, "y": 290, "w": 105, "h": 160},
+    "skills": {"x": 668, "y": 425, "w": 185, "h": 22},
+    "hotbar": {"x": 545, "y": 693, "w": 910, "h": 22},
+    "minimap": {"x": 1776, "y": 22, "w": 208, "h": 146},
+    "coords": {"x": 1775, "y": 18, "w": 62, "h": 12},
+    "chat": {"x": 240, "y": 740, "w": 800, "h": 38},
+}
+
+# 1920x1080: medido em escala 1:1 no print do jogador
+_REGIONS_1920 = {
+    "game_area": {"x": 398, "y": 138, "w": 1124, "h": 588},
+    "player_hp": {"x": 84, "y": 54, "w": 102, "h": 17},
+    "pokemon_hp": {"x": 84, "y": 76, "w": 102, "h": 18},
+    "stance": {"x": 88, "y": 103, "w": 93, "h": 30, "slots": 3},
+    "exp_bar": {"x": 728, "y": 810, "w": 758, "h": 12},
+    "team": {"x": 44, "y": 172, "w": 125, "h": 196, "slots": 4},
+    "battle_list": {"x": 8, "y": 440, "w": 180, "h": 280},
+    "hotbar": {"x": 415, "y": 825, "w": 1095, "h": 36},
+    "minimap": {"x": 1536, "y": 30, "w": 372, "h": 256},
+    "coords": {"x": 1537, "y": 26, "w": 80, "h": 16},
+    "chat": {"x": 412, "y": 900, "w": 1096, "h": 70},
+}
+
+DEFAULT_CALIBRATION = {
+    "summon_name": "Megaclefable",
+    "profiles": {
+        "3440x1440": {"width": 3440, "height": 1440, "regions": _scaled(_REGIONS_3440_AT_2000, 3440 / 2000)},
+        "1920x1080": {"width": 1920, "height": 1080, "regions": _REGIONS_1920},
+    },
+}
+
+
+def migrate_calibration(calibration: Dict) -> Dict:
+    """Formato antigo ({base_width, regions} escalado pela largura) -> perfil 3440x1440."""
+    if "regions" not in calibration or "profiles" in calibration:
+        return calibration
+    base = float(calibration.get("base_width") or 2000)
+    migrated = copy.deepcopy(DEFAULT_CALIBRATION)
+    migrated["summon_name"] = calibration.get("summon_name", migrated["summon_name"])
+    migrated["profiles"]["3440x1440"]["regions"] = _scaled(calibration["regions"], 3440 / base)
+    return migrated
+
+
+def pick_profile(calibration: Dict, width: int, height: int,
+                 forced: Optional[str] = None) -> Tuple[Optional[str], Optional[Dict], float]:
+    """Perfil da resolução exata; senão o de largura mais próxima. Retorna (chave, perfil, escala)."""
+    profiles = calibration.get("profiles", {})
+    if not profiles:
+        return None, None, 1.0
+    key = forced if forced in profiles else f"{width}x{height}"
+    if key not in profiles:
+        same_width = [k for k, p in profiles.items() if p.get("width") == width]
+        key = same_width[0] if same_width else min(profiles, key=lambda k: abs(profiles[k].get("width", 0) - width))
+    profile = profiles[key]
+    return key, profile, width / float(profile.get("width") or width)
+
+
 def scaled_rect(region: Dict, scale: float, frame_shape) -> Optional[tuple]:
-    """Converte a região da referência para pixels do frame, recortando nas bordas."""
+    """Converte a região do perfil para pixels do frame, recortando nas bordas."""
     fh, fw = frame_shape[:2]
     x = int(round(region["x"] * scale))
     y = int(round(region["y"] * scale))
@@ -111,23 +166,25 @@ def active_slot(crop: np.ndarray, slots: int) -> Optional[int]:
     return best
 
 
-def region_point(calibration: Dict, name: str, screen_width: int, slot: int = 0) -> Optional[tuple]:
+def region_point(calibration: Dict, name: str, screen_width: int, screen_height: int,
+                 slot: int = 0) -> Optional[tuple]:
     """Centro da região (ou de um dos seus botões) em pixels da tela real, para clicar."""
-    region = calibration.get("regions", {}).get(name)
+    _, profile, scale = pick_profile(calibration, screen_width, screen_height)
+    region = (profile or {}).get("regions", {}).get(name)
     if not region:
         return None
-    scale = screen_width / float(calibration.get("base_width") or screen_width)
     slots = int(region.get("slots", 1))
     x = (region["x"] + region["w"] * (slot + 0.5) / slots) * scale
     y = (region["y"] + region["h"] / 2) * scale
     return int(round(x)), int(round(y))
 
 
-def read_regions(frame: np.ndarray, calibration: Dict) -> Dict:
+def read_regions(frame: np.ndarray, calibration: Dict, profile_key: Optional[str] = None) -> Dict:
     """Lê todas as barras calibradas no frame. Barra não encontrada vira None."""
-    scale = frame.shape[1] / float(calibration.get("base_width") or frame.shape[1])
-    readings: Dict[str, object] = {}
-    regions = calibration.get("regions", {})
+    fh, fw = frame.shape[:2]
+    key, profile, scale = pick_profile(calibration, fw, fh, forced=profile_key)
+    readings: Dict[str, object] = {"profile": key}
+    regions = (profile or {}).get("regions", {})
     for name, (kind, color) in REGION_KINDS.items():
         region = regions.get(name)
         if not region:

@@ -116,8 +116,8 @@ def test_postura_vai_para_defensivo_ao_juntar_selvagens():
     clicks = []
     run_one_frame([det(0, 0.5, 0.5), det(1, 0.6, 0.5)], FakeNavigator(), enable_auto_stance,
                   readings={"stance": "offensive"}, clicks=clicks)
-    # Mão verde (3º botão) da região padrão, escalada de 2000px para 1920px
-    assert clicks == [(89, 69)]
+    # Tela 1920x1080 usa o perfil medido nessa resolução: centro da mão verde (3º botão)
+    assert clicks == [(166, 118)]
 
 
 def test_postura_ja_certa_ou_sem_leitura_nao_clica():

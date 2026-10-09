@@ -3,7 +3,7 @@ import json
 import os
 import logging
 
-from modules.screen_calibration import DEFAULT_CALIBRATION
+from modules.screen_calibration import DEFAULT_CALIBRATION, migrate_calibration
 
 logger = logging.getLogger("ConfigManager")
 
@@ -78,7 +78,11 @@ class ConfigManager:
 
         try:
             with open(self.config_path, 'r', encoding='utf-8') as f:
-                return _deep_merge(self._default_config(), json.load(f))
+                loaded = json.load(f)
+            # Antes da mescla: senão os perfis padrão entram e a calibração antiga não é convertida
+            if "calibration" in loaded:
+                loaded["calibration"] = migrate_calibration(loaded["calibration"])
+            return _deep_merge(self._default_config(), loaded)
         except Exception as e:
             logger.error(f"Erro ao carregar {self.config_path}: {e}")
             return self._default_config()

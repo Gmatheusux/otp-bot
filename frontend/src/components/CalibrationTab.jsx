@@ -31,14 +31,17 @@ function formatReading(region, readings) {
   return value === null ? 'não encontrado' : `${Math.round(value)}%`
 }
 
-function useReferenceImage(version) {
+function useReferenceImage(profileKey, version) {
   const [image, setImage] = useState(null) // { src, w, h }
   const [error, setError] = useState(null)
 
   useEffect(() => {
+    if (!profileKey) return
     let url
     let cancelled = false
-    apiFetchImage('/api/calibration/reference')
+    setImage(null)
+    setError(null)
+    apiFetchImage(`/api/calibration/reference/${profileKey}`)
       .then((u) => {
         url = u
         const img = new Image()
@@ -50,7 +53,7 @@ function useReferenceImage(version) {
       cancelled = true
       if (url) URL.revokeObjectURL(url)
     }
-  }, [version])
+  }, [profileKey, version])
 
   return { image, error }
 }
@@ -198,10 +201,12 @@ function RegionList({ group, regions, selected, onSelect, readings }) {
                   {reading && <span className="shrink-0 font-mono text-xs text-base-200">{reading}</span>}
                 </span>
                 <span className="block text-xs leading-relaxed text-base-500">{meta.hint}</span>
-                {r && (
+                {r ? (
                   <span className="mt-0.5 block font-mono text-[10px] text-base-600">
                     x {r.x} · y {r.y} · {r.w}×{r.h}
                   </span>
+                ) : (
+                  <span className="mt-0.5 block text-[10px] text-amber-300/80">não marcada nesta resolução: selecione e desenhe</span>
                 )}
               </span>
             </button>
@@ -214,19 +219,33 @@ function RegionList({ group, regions, selected, onSelect, readings }) {
 
 export default function CalibrationTab({ status }) {
   const { config, setValue, reload } = useConfig()
+  const calibration = config?.calibration
+  const profiles = calibration?.profiles ?? {}
+  const profileKeys = Object.keys(profiles).sort((a, b) => profiles[b].width - profiles[a].width)
+  const liveProfile = status?.readings?.profile
+
+  const [chosenProfile, setChosenProfile] = useState(null)
+  // Sem escolha manual, mostra o perfil que o bot está usando agora na tela
+  const profileKey = chosenProfile ?? (profiles[liveProfile] ? liveProfile : profileKeys[0])
+  const profile = profiles[profileKey]
+  const regions = profile?.regions ?? {}
+
   const [version, setVersion] = useState(0)
-  const { image, error: imageError } = useReferenceImage(version)
+  const { image, error: imageError } = useReferenceImage(profileKey, version)
   const [selected, setSelected] = useState(null)
   const [testResult, setTestResult] = useState(null)
   const [busy, setBusy] = useState(null) // 'reference' | 'capture'
   const [countdown, setCountdown] = useState(0)
   const [error, setError] = useState(null)
 
-  const calibration = config?.calibration
-  const regions = calibration?.regions ?? {}
+  const chooseProfile = (key) => {
+    setChosenProfile(key)
+    setTestResult(null)
+    setSelected(null)
+  }
 
   const commitRegion = (id, rect) => {
-    setValue(`calibration.regions.${id}`, { ...regions[id], ...rect })
+    setValue(`calibration.profiles.${profileKey}.regions.${id}`, { ...regions[id], ...rect })
     setTestResult(null)
   }
 
@@ -245,7 +264,9 @@ export default function CalibrationTab({ status }) {
     setBusy('reference')
     setError(null)
     try {
-      setTestResult(await apiFetch('/api/calibration/test', { method: 'POST', body: JSON.stringify({ source: 'reference' }) }))
+      setTestResult(
+        await apiFetch('/api/calibration/test', { method: 'POST', body: JSON.stringify({ source: 'reference', profile: profileKey }) }),
+      )
     } catch (err) {
       setError(err.message)
     } finally {
@@ -257,10 +278,12 @@ export default function CalibrationTab({ status }) {
     setBusy('capture')
     setError(null)
     try {
-      await withCountdown(CAPTURE_DELAY_S, () =>
+      const result = await withCountdown(CAPTURE_DELAY_S, () =>
         apiFetch('/api/calibration/reference', { method: 'POST', body: JSON.stringify({ delay_s: CAPTURE_DELAY_S }) }),
       )
       await reload()
+      // O print vai para o perfil da resolução atual da tela
+      setChosenProfile(result.profile)
       setVersion((v) => v + 1)
       setTestResult(null)
     } catch (err) {
@@ -272,7 +295,9 @@ export default function CalibrationTab({ status }) {
 
   if (!calibration) return <p className="text-sm text-base-500">Carregando calibração…</p>
 
-  const shownReadings = testResult?.readings ?? status?.readings
+  // A leitura ao vivo só faz sentido no perfil que a tela está usando
+  const liveMatches = liveProfile === profileKey
+  const shownReadings = testResult?.readings ?? (liveMatches ? status?.readings : null)
 
   return (
     <div className="space-y-5">
@@ -281,9 +306,26 @@ export default function CalibrationTab({ status }) {
           <div className="max-w-2xl">
             <h3 className="text-sm font-semibold text-base-100">Onde fica cada coisa na sua tela</h3>
             <p className="mt-1 text-xs leading-relaxed text-base-400">
-              As regiões já vêm marcadas a partir do seu print. Se mudar o layout do jogo, clique numa região e arraste na
-              imagem para redesenhar. Tudo é ajustado sozinho para o tamanho do seu monitor (pela largura da tela).
+              A interface do jogo tem o mesmo tamanho em qualquer monitor, então cada resolução tem suas próprias regiões. O
+              bot escolhe sozinho pelo tamanho da tela. Para corrigir, clique numa região e arraste na imagem.
             </p>
+            <div className="mt-3 inline-flex flex-wrap gap-1 rounded-lg border border-base-800 bg-base-950 p-1">
+              {profileKeys.map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => chooseProfile(key)}
+                  className={`inline-flex items-center gap-2 rounded-md px-3 py-1.5 font-mono text-xs transition-colors ${
+                    key === profileKey ? 'bg-accent-500/15 text-accent-300' : 'text-base-400 hover:bg-base-800 hover:text-base-200'
+                  }`}
+                >
+                  {key.replace('x', ' × ')}
+                  {key === liveProfile && (
+                    <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 font-sans text-[10px] text-emerald-300">em uso</span>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -317,7 +359,7 @@ export default function CalibrationTab({ status }) {
             {image ? (
               <CalibrationCanvas
                 image={image}
-                baseWidth={calibration.base_width || image.w}
+                baseWidth={profile?.width || image.w}
                 regions={regions}
                 selected={selected}
                 onSelect={setSelected}
@@ -325,7 +367,9 @@ export default function CalibrationTab({ status }) {
               />
             ) : (
               <p className="px-1 py-10 text-center text-sm text-base-500">
-                {imageError ? 'Nenhuma imagem de referência. Clique em "Usar print atual".' : 'Carregando imagem…'}
+                {imageError
+                  ? `Sem imagem de referência para ${profileKey}. Coloque o jogo nessa resolução e clique em "Usar print atual".`
+                  : 'Carregando imagem…'}
               </p>
             )}
           </div>
@@ -336,7 +380,9 @@ export default function CalibrationTab({ status }) {
           <Card title="Barras" status="ativo" description="O bot já lê estas barras pela cor, 2 vezes por segundo.">
             <RegionList group="bars" regions={regions} selected={selected} onSelect={setSelected} readings={shownReadings} />
             <div className="border-t border-base-800 px-5">
-              <Field field={{ type: 'number', path: 'calibration.regions.team.slots', label: 'Pokémons na Pokébar', min: 1, max: 6 }} />
+              <Field
+                field={{ type: 'number', path: `calibration.profiles.${profileKey}.regions.team.slots`, label: 'Pokémons na Pokébar', min: 1, max: 6 }}
+              />
               <Field field={{ type: 'text', path: 'calibration.summon_name', label: 'Seu pokémon', hint: 'Nome que aparece em cima dele no jogo.' }} />
             </div>
           </Card>
@@ -348,11 +394,13 @@ export default function CalibrationTab({ status }) {
 
       <ReadingsPanel
         readings={shownReadings}
-        title={testResult ? 'Leitura na imagem de referência' : 'Leitura ao vivo da sua tela'}
+        title={testResult ? `Leitura na imagem de referência (${profileKey})` : 'Leitura ao vivo da sua tela'}
         description={
           testResult
             ? 'Resultado do botão "Ler na imagem". Mude qualquer região para voltar à leitura ao vivo.'
-            : 'Com o jogo aberto na tela, estes valores acompanham o jogo em tempo real.'
+            : liveMatches
+              ? 'Com o jogo aberto na tela, estes valores acompanham o jogo em tempo real.'
+              : `Sua tela agora está em ${liveProfile ?? '—'}; a leitura ao vivo aparece no perfil dessa resolução.`
         }
       />
       <p className="flex items-center gap-2 text-xs text-base-500">

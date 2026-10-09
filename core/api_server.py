@@ -275,51 +275,70 @@ async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(ge
 
 # ---------------------------------------------------------------- Calibração da tela
 
-REFERENCE_IMAGE = Path("assets/calibration/reference.png")
+CALIBRATION_DIR = Path("assets/calibration")
+
+
+def reference_path(profile_key: str) -> Path:
+    # A chave vem da API: só aceita o formato "1920x1080" para não virar caminho arbitrário
+    if not profile_key.replace("x", "", 1).isdigit():
+        raise HTTPException(status_code=400, detail="Perfil inválido.")
+    return CALIBRATION_DIR / f"reference_{profile_key}.png"
 
 
 class CalibrationTest(BaseModel):
     source: Literal["reference", "screen"] = "reference"
+    profile: Optional[str] = None
     delay_s: float = Field(default=0, ge=0, le=10)
 
 
-@app.get("/api/calibration/reference", dependencies=[Depends(require_token)])
-async def calibration_reference():
-    if not REFERENCE_IMAGE.exists():
-        raise HTTPException(status_code=404, detail="Nenhuma imagem de referência salva.")
-    return Response(content=REFERENCE_IMAGE.read_bytes(), media_type="image/png")
+@app.get("/api/calibration/reference/{profile_key}", dependencies=[Depends(require_token)])
+async def calibration_reference(profile_key: str):
+    path = reference_path(profile_key)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Este perfil ainda não tem imagem de referência.")
+    return Response(content=path.read_bytes(), media_type="image/png")
 
 
 @app.post("/api/calibration/reference", dependencies=[Depends(require_token)])
 async def set_calibration_reference(req: ScreenshotRequest, rt=Depends(get_runtime)):
-    """Troca a referência por um print atual e reescala as regiões para a nova largura."""
+    """
+    Salva um print atual como referência do perfil da resolução da tela.
+    Resolução nova vira um perfil novo, copiado do mais próximo e escalado pela largura.
+    """
     await asyncio.sleep(req.delay_s)
     frame = await asyncio.to_thread(sprite_library.capture_screen)
-    REFERENCE_IMAGE.parent.mkdir(parents=True, exist_ok=True)
-    REFERENCE_IMAGE.write_bytes(sprite_library.encode_png(frame))
+    height, width = frame.shape[:2]
+    key = f"{width}x{height}"
+    CALIBRATION_DIR.mkdir(parents=True, exist_ok=True)
+    reference_path(key).write_bytes(sprite_library.encode_png(frame))
 
     config = rt.config_manager.config
-    calibration = config["calibration"]
-    factor = frame.shape[1] / float(calibration.get("base_width") or frame.shape[1])
-    for region in calibration["regions"].values():
-        for k in ("x", "y", "w", "h"):
-            region[k] = int(round(region[k] * factor))
-    calibration["base_width"] = int(frame.shape[1])
-    rt.config_manager.update_full_config(config)
-    return {"status": "ok", "width": int(frame.shape[1]), "height": int(frame.shape[0])}
+    profiles = config["calibration"]["profiles"]
+    created = key not in profiles
+    if created:
+        base_key, base, scale = screen_calibration.pick_profile(config["calibration"], width, height)
+        regions = screen_calibration._scaled(base["regions"], scale) if base else {}
+        profiles[key] = {"width": width, "height": height, "regions": regions}
+        logger.info(f"Perfil de calibração {key} criado a partir de {base_key}. Confira as regiões.")
+        rt.config_manager.update_full_config(config)
+    return {"status": "ok", "profile": key, "created": created}
 
 
 @app.post("/api/calibration/test", dependencies=[Depends(require_token)])
 async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
-    """Lê as barras na imagem de referência ou num print novo da tela."""
+    """Lê as barras na imagem de referência de um perfil ou num print novo da tela."""
+    calibration = rt.config_manager.config["calibration"]
     if req.source == "reference":
-        if not REFERENCE_IMAGE.exists():
-            raise HTTPException(status_code=404, detail="Nenhuma imagem de referência salva.")
-        frame = sprite_library.decode_image(REFERENCE_IMAGE.read_bytes())
+        if not req.profile:
+            raise HTTPException(status_code=400, detail="Informe o perfil.")
+        path = reference_path(req.profile)
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="Este perfil ainda não tem imagem de referência.")
+        frame = sprite_library.decode_image(path.read_bytes())
     else:
         await asyncio.sleep(req.delay_s)
         frame = await asyncio.to_thread(sprite_library.capture_screen)
-    readings = await asyncio.to_thread(screen_calibration.read_regions, frame, rt.config_manager.config["calibration"])
+    readings = await asyncio.to_thread(screen_calibration.read_regions, frame, calibration, req.profile)
     return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 
 
