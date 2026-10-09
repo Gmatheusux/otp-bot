@@ -37,5 +37,11 @@ architecture_style: hybrid_cv_utility_ai
 
 ## <span style="color: #CC5500;">**Interface Gráfica Integrada (Dashboard React + API FastAPI)**</span>
 - <span style="color: #CC5500;">**Bot com GUI Própria:**</span> O bot não é mais apenas um script headless: possui uma Interface Gráfica Integrada (`frontend/`, React + Vite + Tailwind) que roda localmente e se comunica com o `core/api_server.py` (FastAPI) via HTTP/WebSocket, sem depender de processos externos de terceiros.
-- <span style="color: #CC5500;">**Fonte Única de Verdade:**</span> O `config.json` em disco é a fonte de verdade. A UI nunca mantém estado de configuração divergente: lê via `GET /api/config` no mount (`useBotConfig`) e grava via `POST /api/config` a cada alteração do usuário (ex: Delay do Revive, Ofensividade), com o backend sobrescrevendo o arquivo inteiro a cada chamada.
-- <span style="color: #CC5500;">**Telemetria em Tempo Real:**</span> O `ConnectionManager` do `api_server.py` expõe `/ws/logs` para transmitir decisões do orquestrador para o Dashboard sem HTTP Polling, mantendo a UI reativa ao estado real de execução do bot.
+- <span style="color: #CC5500;">**Fonte Única de Verdade:**</span> O `config.json` em disco é a fonte de verdade. A UI lê via `GET /api/config` e grava via `POST /api/config` (agrupando edições seguidas), com o backend sobrescrevendo o arquivo inteiro. A `decision_thread` relê o config a cada frame, então as mudanças valem sem reiniciar (exceto o arquivo do modelo).
+- <span style="color: #CC5500;">**Console por Schema:**</span> Abas, seções e campos vêm de `frontend/src/schema/features.js`, cada campo apontando para um caminho do `config.json`. Seções têm `status: ativo | planejado` para a UI nunca prometer o que o bot ainda não faz.
+- <span style="color: #CC5500;">**Console Exclusivo:**</span> API presa em `127.0.0.1`, sem CORS, com token aleatório por execução (`X-OTP-Token`). Janela própria via `pywebview`.
+- <span style="color: #CC5500;">**Telemetria em Tempo Real:**</span> `/ws/logs` transmite o log do bot; `/api/status` entrega estado, telemetria e as leituras da tela (HP, EXP, postura, time).
+
+## <span style="color: #CC5500;">**Calibração da Interface**</span>
+- <span style="color: #CC5500;">**Perfis por Resolução:**</span> A interface do cliente não escala com o monitor. As regiões ficam em pixels reais por resolução (`calibration.profiles["LxA"]`) e o perfil é escolhido pelo tamanho do frame.
+- <span style="color: #CC5500;">**Leitura por Cor:**</span> Barras lidas por máscara HSV e última coluna colorida; postura pela mediana do brilho do fundo da mão ativa. Leitura incerta retorna `None` e o bot não age sobre ela.
