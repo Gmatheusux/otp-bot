@@ -13,7 +13,8 @@
 |---|---|
 | **Etapa atual** | **E01: Git, spike de entrada sem foco e janela do jogo** |
 | Última etapa concluída | E00: Análise e arquitetura (2026-10-09) |
-| Bloqueios | Git bloqueado por "dubious ownership" (ver E01, pré-requisito). Material do jogo pendente (necessário a partir da E04) |
+| Bloqueios | Material do jogo pendente (necessário a partir da E04) |
+| Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
 | Material do jogo recebido | ❌ nenhum ainda (ver §6) |
 | Última atualização | 2026-10-09, conversa E00 |
 
@@ -193,11 +194,9 @@ Legenda de status: ⬜ não iniciada · 🔵 em andamento · 🟡 parcial · ✅
 **Objetivo:** destravar o git e responder a maior dúvida técnica do projeto: o cliente aceita teclas e cliques com o
 jogo **fora de foco**?
 **Leitura obrigatória:** `docs/ARQUITETURA.md` §4 e §9 (R1); `docs/ESPECIFICACAO.md` §1.
-**Pré-requisito do usuário:** resolver o git (a pasta pertence a "Administradores"). Rodar, num terminal:
-`git config --global --add safe.directory "C:/Users/Gabe/Documents/03- Projeto de automação"`.
-Ter o jogo aberto no monitor secundário em DirectX.
+**Pré-requisito do usuário:** ter o jogo aberto no monitor secundário em DirectX.
 
-- [ ] Git funcionando; commit inicial do estado atual (documentos da E00 incluídos); conferir se há remoto no GitHub.
+- [x] Git funcionando (`safe.directory` adicionado); documentos da E00 no commit `157326c`, enviado ao GitHub.
 - [ ] `platform/game_window.py`: achar a janela do cliente, monitor, retângulo, foco; DPI aware.
 - [ ] Script de spike em `tools/spike_input.py`: teclado numérico (Num Lock off), hotkeys F1–F12 e clique, via
   PostMessage com o jogo **sem foco**; registrar o que funcionou.
@@ -407,8 +406,9 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - **Decisões:** D1–D19 aprovadas; D11 (entrada sem foco) depende do spike da E01.
 - **Removido do escopo:** combo sequencial, Stun, mira em alvo único, rota por *Map Marks*/clique no minimapa, poção,
   itens por tempo, pausas aleatórias, compra de itens, loot, respostas automáticas (motivos na §8).
-- **Pendências:** git bloqueado ("dubious ownership"); material do jogo (§6); P2–P6 da especificação.
-- **Próxima etapa:** E01. O usuário precisa liberar o git (comando na E01) e ter o jogo aberto no monitor secundário.
+- **Git:** liberado (`safe.directory`); commit `157326c` enviado para `origin/main`.
+- **Pendências:** material do jogo (§6); P2–P6 da especificação.
+- **Próxima etapa:** E01. O usuário precisa ter o jogo aberto no monitor secundário, em DirectX.
 
 ---
 
