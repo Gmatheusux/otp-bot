@@ -17,6 +17,7 @@ const GAME_KEYS = [
 const QUICK = [
   { path: 'features.combat.auto_combo', label: 'Combo automático', hint: 'Ataca selvagens com o combo', tab: 'combate' },
   { path: 'features.combat.boxed_defense', label: 'Defesa quando cercado', hint: 'Defesa + combo + revive no lure', tab: 'combate' },
+  { path: 'features.heal.pokemon_heal.enabled', label: 'Cura com pokémon', hint: 'Troca para o curador quando o HP cai', tab: 'cura' },
   { path: 'features.catch.enabled', label: 'Captura automática', hint: 'Joga pokébola nos corpos', tab: 'captura' },
   { path: 'features.safety.gm_monitor', label: 'Monitor de GM', hint: 'Desliga o bot se um GM falar', tab: 'seguranca' },
 ]

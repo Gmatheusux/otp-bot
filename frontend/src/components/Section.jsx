@@ -1,4 +1,6 @@
 import { Field } from './fields.jsx'
+import { useConfig } from '../context/ConfigContext.jsx'
+import { getPath } from '../lib/config.js'
 
 const BADGES = {
   ativo: { label: 'Funcionando', className: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
@@ -35,6 +37,12 @@ export function Card({ title, description, status, children, footer }) {
 }
 
 export default function Section({ section }) {
+  const { config } = useConfig()
+  // showIf: campo só aparece quando outro campo tem um valor (ex: teclas só no modo "Tecla")
+  const fields = section.fields.filter(
+    (f) => !f.showIf || getPath(config, f.showIf.path) === f.showIf.equals,
+  )
+  const Extra = section.extra
   return (
     <Card
       title={section.title}
@@ -49,10 +57,11 @@ export default function Section({ section }) {
       }
     >
       <div className="divide-y divide-base-800/70 px-5">
-        {section.fields.map((field) => (
+        {fields.map((field) => (
           <Field key={`${field.path}-${field.label}`} field={field} />
         ))}
       </div>
+      {Extra && <Extra />}
     </Card>
   )
 }

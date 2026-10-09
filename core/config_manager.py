@@ -50,7 +50,23 @@ DEFAULT_CONFIG = {
         "target": {"auto_target": False, "range": 7, "ignore": [], "shiny_priority": False, "shiny_words": ["shiny"]},
         "heal": {
             "potion": {"enabled": False, "hp_percent": 60, "key": "f5"},
-            "player_regen": {"enabled": False, "hp_percent": 90, "skill_key": "f6", "only_out_of_battle": True},
+            # Cura com pokémon: desligada até o jogador configurar e ligar manualmente
+            "pokemon_heal": {
+                "enabled": False,
+                "hp_percent": 90,
+                "swap_method": "pokebar",   # "pokebar" (clica na posição) ou "key"
+                "healer_slot": 2,
+                "healer_name": "",
+                "healer_key": "",
+                "farm_slot": 1,
+                "farm_key": "",
+                "rotation": [],
+                "rotation_delay_ms": 800,
+                "summon_wait_ms": 1500,
+                "use_revive": True,
+                "revive_key": "",           # vazio = tecla de revive do perfil
+                "cooldown_s": 15,
+            },
             "medicine": {"enabled": False, "key": "f7"},
         },
         "route": {"loop": True, "wait_first_waypoint": False, "vary_path": False, "vary_sqm": 1},

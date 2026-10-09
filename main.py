@@ -12,7 +12,8 @@ from core.action_orchestrator import UtilityOrchestrator
 from core.mouse_controller import MouseController
 from core.config_manager import ConfigManager
 from core.navigator import Navigator
-from core.decision_thread import decision_thread
+from core.decision_thread import decision_thread, press_key_action, click_action
+from core.heal_routine import PokemonHealRoutine
 from modules.sprite_library import SpriteLibrary, capture_screen
 from modules.screen_calibration import read_regions
 
@@ -151,7 +152,9 @@ async def run_bot(port: int, ready: threading.Event) -> None:
 
     # 5. Loop Concorrente
     perception_task = asyncio.create_task(perception_thread(vision_engine, state_queue, pause_event, kill_event, config_mgr, rt.telemetry))
-    decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry))
+    heal_routine = PokemonHealRoutine(press_key_action, lambda point: click_action(mouse_controller, point), telemetry=rt.telemetry)
+    rt.heal_routine = heal_routine
+    decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry, heal_routine))
     chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.get_features().get("safety", {})))
 
     calibration_task = asyncio.create_task(calibration_monitor(config_mgr, kill_event, rt.telemetry))

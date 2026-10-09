@@ -44,7 +44,8 @@ async def decision_thread(
     state_queue: asyncio.Queue,
     pause_event: asyncio.Event,
     kill_event: asyncio.Event,
-    telemetry: dict = None
+    telemetry: dict = None,
+    heal_routine=None
 ) -> None:
     """
     Thread de Decisão Assíncrona: Cérebro Try-Hard (Foco no Summon).
@@ -67,6 +68,11 @@ async def decision_thread(
             except asyncio.TimeoutError:
                 continue
 
+            # Rotina de cura rodando (ex: disparada pelo botão de teste): ela está no controle
+            if heal_routine is not None and heal_routine.running:
+                state_queue.task_done()
+                continue
+
             config = get_config()
             profile = config.get("pokemon_profile", {})
             combat = config.get("features", {}).get("combat", {})
@@ -87,6 +93,30 @@ async def decision_thread(
             if telemetry is not None:
                 telemetry["mobs_on_screen"] = mobs_on_screen
                 telemetry["is_boxed"] = is_boxed
+
+            # Cura com pokémon: HP baixo e área limpa -> curador, rotação, revive, volta ao farm
+            heal_cfg = config.get("features", {}).get("heal", {}).get("pokemon_heal", {})
+            readings = (telemetry or {}).get("readings", {})
+            if heal_routine is not None and heal_routine.should_start(heal_cfg, readings, mobs_on_screen, is_boxed):
+                def danger() -> bool:
+                    # Olha o frame mais novo da percepção sem esperar; sem frame novo, segue a rotina
+                    try:
+                        fresh = state_queue.get_nowait()
+                    except asyncio.QueueEmpty:
+                        return False
+                    state_queue.task_done()
+                    s = spatial.calculate_spatial_state(fresh)
+                    return s["is_boxed"] or s["mobs_on_screen"] > 0
+
+                resume_route = navigator.is_playing
+                if resume_route:
+                    navigator.stop_playback()
+                result = await heal_routine.run(heal_cfg, config.get("calibration", {}), (screen_w, screen_h),
+                                                fallback_revive_key=revive_key, danger=danger)
+                if resume_route and result == "done":
+                    asyncio.create_task(navigator.play_route())
+                state_queue.task_done()
+                continue
 
             # Postura automática: clica na mão (ofensivo/neutro/defensivo) definida para a fase atual
             stance_cfg = config.get("features", {}).get("stance", {})

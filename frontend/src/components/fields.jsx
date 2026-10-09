@@ -339,6 +339,45 @@ export function KeyPicker({ value, onChange, disabled }) {
   )
 }
 
+/** Sequência de teclas em ordem (ex: rotação de cura). */
+function KeyList({ value, onChange, disabled, addLabel = 'Adicionar tecla' }) {
+  const keys = Array.isArray(value) ? value : []
+  return (
+    <div className="space-y-2">
+      {keys.length === 0 && <p className="text-xs text-amber-300">Nenhuma tecla ainda. Adicione na ordem em que o bot deve apertar.</p>}
+      <ol className="flex flex-wrap items-center gap-2">
+        {keys.map((key, i) => (
+          <li key={i} className="flex items-center gap-1.5">
+            <span className="font-mono text-[11px] text-base-500">{i + 1}.</span>
+            <KeyPicker value={key} disabled={disabled} onChange={(next) => onChange(keys.map((k, j) => (j === i ? next : k)))} />
+            <button
+              type="button"
+              disabled={disabled}
+              aria-label={`Remover tecla ${i + 1}`}
+              onClick={() => onChange(keys.filter((_, j) => j !== i))}
+              className="rounded p-1 text-base-500 hover:bg-base-800 hover:text-red-300"
+            >
+              <Icon name="x" className="h-3.5 w-3.5" />
+            </button>
+            {i < keys.length - 1 && <Icon name="chevron" className="h-3.5 w-3.5 text-base-600" />}
+          </li>
+        ))}
+        <li>
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange([...keys, ''])}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-base-700 px-3 py-1.5 text-xs text-base-400 hover:border-accent-500/50 hover:text-accent-300"
+          >
+            <Icon name="plus" className="h-3.5 w-3.5" />
+            {addLabel}
+          </button>
+        </li>
+      </ol>
+    </div>
+  )
+}
+
 function RoiInput({ value, onChange, disabled }) {
   const roi = Array.isArray(value) && value.length === 4 ? value : [0, 0, 0, 0]
   const labels = ['X', 'Y', 'Largura', 'Altura']
@@ -412,6 +451,10 @@ export function Field({ field }) {
     case 'roi':
       stacked = true
       control = <RoiInput value={value} onChange={setValue} disabled={disabled} />
+      break
+    case 'keylist':
+      stacked = true
+      control = <KeyList value={value} onChange={setValue} disabled={disabled} addLabel={field.addLabel} />
       break
     default:
       control = null

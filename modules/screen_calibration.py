@@ -174,8 +174,14 @@ def region_point(calibration: Dict, name: str, screen_width: int, screen_height:
     if not region:
         return None
     slots = int(region.get("slots", 1))
-    x = (region["x"] + region["w"] * (slot + 0.5) / slots) * scale
-    y = (region["y"] + region["h"] / 2) * scale
+    if REGION_KINDS.get(name, (None,))[0] == "slots":
+        # Pokébar: um pokémon embaixo do outro
+        x = (region["x"] + region["w"] / 2) * scale
+        y = (region["y"] + region["h"] * (slot + 0.5) / slots) * scale
+    else:
+        # Mãos de postura e afins: lado a lado
+        x = (region["x"] + region["w"] * (slot + 0.5) / slots) * scale
+        y = (region["y"] + region["h"] / 2) * scale
     return int(round(x)), int(round(y))
 
 

@@ -9,6 +9,10 @@ const ELEMENTS = [
   'psychic', 'rock', 'ice', 'bug', 'dragon', 'ghost', 'dark', 'steel', 'fairy',
 ].map((value) => ({ value, label: value[0].toUpperCase() + value.slice(1) }))
 
+import HealTestPanel from '../components/HealTestPanel.jsx'
+
+const HEAL = 'features.heal.pokemon_heal'
+
 const STANCE_OPTIONS = [
   { value: 'offensive', label: 'Ofensivo' },
   { value: 'neutral', label: 'Neutro' },
@@ -94,7 +98,7 @@ export const TABS = [
       {
         title: 'Revive',
         status: 'ativo',
-        description: 'Hoje o revive é usado dentro da sequência de defesa quando o seu pokémon fica cercado.',
+        description: 'Usado na sequência de defesa quando o seu pokémon fica cercado e, se você não definir outra tecla, também na cura com pokémon.',
         fields: [
           { type: 'key', path: 'pokemon_profile.revive_key', label: 'Tecla do revive' },
           { type: 'number', path: 'cooldowns.revive', label: 'Intervalo mínimo', unit: 's', min: 1, max: 60, step: 0.5 },
@@ -111,14 +115,38 @@ export const TABS = [
         ],
       },
       {
-        title: 'Cura do jogador (regen)',
-        status: 'planejado',
-        description: 'Usa a skill de cura de um pokémon do time para curar o jogador.',
+        title: 'Cura com pokémon',
+        status: 'ativo',
+        description:
+          'Quando o seu HP (barra vermelha) cair abaixo do limite, o bot espera a box acabar e não ter selvagem por perto, chama o pokémon de cura, faz a rotação de cura, usa revive nele para zerar a recarga das skills e volta para o pokémon de farm. Se aparecer selvagem no meio, ele volta na hora para o de farm.',
+        extra: HealTestPanel,
         fields: [
-          { type: 'toggle', path: 'features.heal.player_regen.enabled', label: 'Curar o jogador' },
-          { type: 'slider', path: 'features.heal.player_regen.hp_percent', label: 'Curar abaixo de', unit: '%', min: 10, max: 99 },
-          { type: 'key', path: 'features.heal.player_regen.skill_key', label: 'Tecla da skill' },
-          { type: 'toggle', path: 'features.heal.player_regen.only_out_of_battle', label: 'Só fora de batalha' },
+          { type: 'toggle', path: `${HEAL}.enabled`, label: 'Ativar cura com pokémon', hint: 'Só liga quando você ativar aqui.' },
+          { type: 'slider', path: `${HEAL}.hp_percent`, label: 'Curar quando o HP ficar abaixo de', unit: '%', min: 30, max: 99 },
+          {
+            type: 'segmented', path: `${HEAL}.swap_method`, label: 'Como trocar de pokémon',
+            options: [
+              { value: 'pokebar', label: 'Clicar na Pokébar' },
+              { value: 'key', label: 'Tecla' },
+            ],
+          },
+          {
+            type: 'number', path: `${HEAL}.healer_slot`, label: 'Pokémon de cura', min: 1, max: 6,
+            hint: 'Posição na Pokébar, contando de cima: 1 = o primeiro.', showIf: { path: `${HEAL}.swap_method`, equals: 'pokebar' },
+          },
+          { type: 'key', path: `${HEAL}.healer_key`, label: 'Tecla do pokémon de cura', showIf: { path: `${HEAL}.swap_method`, equals: 'key' } },
+          { type: 'text', path: `${HEAL}.healer_name`, label: 'Nome do curador', placeholder: 'ex: Togepi', hint: 'Só para aparecer no log.' },
+          {
+            type: 'number', path: `${HEAL}.farm_slot`, label: 'Pokémon de farm', min: 1, max: 6,
+            hint: 'O pokémon que o bot chama de volta depois de curar.', showIf: { path: `${HEAL}.swap_method`, equals: 'pokebar' },
+          },
+          { type: 'key', path: `${HEAL}.farm_key`, label: 'Tecla do pokémon de farm', showIf: { path: `${HEAL}.swap_method`, equals: 'key' } },
+          { type: 'keylist', path: `${HEAL}.rotation`, label: 'Rotação de cura', hint: 'Golpes do curador, na ordem.', addLabel: 'Adicionar golpe' },
+          { type: 'number', path: `${HEAL}.rotation_delay_ms`, label: 'Espera entre golpes', unit: 'ms', min: 100, max: 5000, step: 50 },
+          { type: 'number', path: `${HEAL}.summon_wait_ms`, label: 'Espera ao trocar de pokémon', unit: 'ms', min: 300, max: 5000, step: 50, hint: 'Tempo para o pokémon sair da bola.' },
+          { type: 'toggle', path: `${HEAL}.use_revive`, label: 'Usar revive no curador depois', hint: 'Zera a recarga das skills dele para a próxima cura.' },
+          { type: 'key', path: `${HEAL}.revive_key`, label: 'Tecla do revive', hint: 'Sem tecla, usa a do Revive acima.', showIf: { path: `${HEAL}.use_revive`, equals: true } },
+          { type: 'number', path: `${HEAL}.cooldown_s`, label: 'Intervalo mínimo entre curas', unit: 's', min: 3, max: 300 },
         ],
       },
       {

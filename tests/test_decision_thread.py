@@ -25,7 +25,7 @@ def det(class_id, x, y):
             "box_relative": {"x_center": x, "y_center": y, "width": 0.02, "height": 0.02}}
 
 
-def run_one_frame(detections, navigator, config_patch=None, readings=None, clicks=None):
+def run_one_frame(detections, navigator, config_patch=None, readings=None, clicks=None, heal_routine=None):
     """Roda a decision_thread com um único frame e devolve as teclas apertadas."""
     pressed = []
 
@@ -51,7 +51,7 @@ def run_one_frame(detections, navigator, config_patch=None, readings=None, click
             config_patch(config)
 
         task = asyncio.create_task(dt.decision_thread(
-            orchestrator, navigator, None, lambda: config, queue, pause, kill, telemetry))
+            orchestrator, navigator, None, lambda: config, queue, pause, kill, telemetry, heal_routine))
         await queue.put(detections)
         await asyncio.sleep(0.1)
         kill.set()
@@ -127,6 +127,40 @@ def test_postura_ja_certa_ou_sem_leitura_nao_clica():
     run_one_frame(lure, FakeNavigator(), enable_auto_stance, readings={"stance": None}, clicks=clicks)
     run_one_frame(lure, FakeNavigator(), None, readings={"stance": "offensive"}, clicks=clicks)  # auto desligado
     assert clicks == []
+
+
+class FakeHealRoutine:
+    def __init__(self, running=False):
+        self.running = running
+        self.runs = []
+
+    def should_start(self, cfg, readings, mobs_on_screen, is_boxed):
+        return readings.get("player_hp", 100) < 90 and mobs_on_screen == 0 and not is_boxed
+
+    async def run(self, cfg, calibration, screen_size, fallback_revive_key="", danger=None):
+        self.runs.append((screen_size, fallback_revive_key))
+        return "done"
+
+
+def test_hp_baixo_sem_selvagens_dispara_a_cura():
+    routine = FakeHealRoutine()
+    pressed, _ = run_one_frame([det(0, 0.5, 0.5)], FakeNavigator(), readings={"player_hp": 70}, heal_routine=routine)
+    assert routine.runs == [((1920, 1080), "f2")]
+    assert pressed == []
+
+
+def test_cura_espera_a_box_acabar():
+    routine = FakeHealRoutine()
+    pressed, _ = run_one_frame([det(0, 0.5, 0.5), det(1, 0.6, 0.5)], FakeNavigator(),
+                               readings={"player_hp": 70}, heal_routine=routine)
+    assert routine.runs == []
+    assert pressed == ["f1"]  # continua combatendo
+
+
+def test_combate_pausa_enquanto_a_cura_roda():
+    pressed, _ = run_one_frame([det(0, 0.5, 0.5), det(1, 0.6, 0.5)], FakeNavigator(),
+                               heal_routine=FakeHealRoutine(running=True))
+    assert pressed == []
 
 
 def test_sem_deteccoes_nao_faz_nada():

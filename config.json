@@ -7,7 +7,7 @@
         "revive": 5,
         "auto_combo": 2,
         "defensive_buff": 10,
-        "stance": 2.0
+        "stance": 2
     },
     "hotkeys": {
         "pause": "f8",
@@ -70,15 +70,31 @@
                 "hp_percent": 60,
                 "key": "f5"
             },
+            "pokemon_heal": {
+                "enabled": false,
+                "hp_percent": 90,
+                "swap_method": "pokebar",
+                "healer_slot": 2,
+                "healer_name": "",
+                "healer_key": "",
+                "farm_slot": 1,
+                "farm_key": "",
+                "rotation": [],
+                "rotation_delay_ms": 800,
+                "summon_wait_ms": 1500,
+                "use_revive": true,
+                "revive_key": "",
+                "cooldown_s": 15
+            },
+            "medicine": {
+                "enabled": false,
+                "key": "f7"
+            },
             "player_regen": {
                 "enabled": false,
                 "hp_percent": 90,
                 "skill_key": "f6",
                 "only_out_of_battle": true
-            },
-            "medicine": {
-                "enabled": false,
-                "key": "f7"
             }
         },
         "route": {

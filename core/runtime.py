@@ -31,7 +31,9 @@ class BotRuntime:
             "mobs_on_screen": 0,
             "is_boxed": False,
             "readings": {},  # barras lidas pela calibração (HP, EXP, time)
+            "heal_routine": "parado",
         }
+        self.heal_routine = None
 
     def status(self) -> Dict[str, Any]:
         return {
@@ -81,6 +83,31 @@ class BotRuntime:
     def toggle_recording(self):
         if self.navigator:
             self.loop.call_soon_threadsafe(self.navigator.toggle_recording)
+
+    def heal_test(self, action: str, delay_s: float) -> bool:
+        """Botões de teste da cura: troca para o curador/farm ou roda a rotina inteira."""
+        routine = getattr(self, "heal_routine", None)
+        if routine is None or routine.running:
+            return False
+
+        async def job():
+            import pyautogui
+            await asyncio.sleep(delay_s)
+            config = self.config_manager.config
+            cfg = config.get("features", {}).get("heal", {}).get("pokemon_heal", {})
+            calibration = config.get("calibration", {})
+            size = tuple(pyautogui.size())
+            if action == "full":
+                revive = config.get("pokemon_profile", {}).get("revive_key", "")
+                result = await routine.run(cfg, calibration, size, fallback_revive_key=revive)
+                logger.info(f"Teste da cura terminou: {result}")
+            else:
+                ok = await routine.swap(cfg, action, calibration, size)
+                who = "de cura" if action == "healer" else "de farm"
+                logger.info(f"Teste: troca para o pokémon {who} {'enviada' if ok else 'não configurada'}")
+
+        self.loop.create_task(job())
+        return True
 
     def apply_hotkeys(self):
         """(Re)registra as hotkeys globais a partir do config atual."""

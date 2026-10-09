@@ -164,6 +164,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str = ""):
         ws_manager.disconnect(websocket)
 
 
+class HealTestRequest(BaseModel):
+    action: Literal["healer", "farm", "full"]
+    delay_s: float = Field(default=3.0, ge=0, le=10)
+
+
+@app.post("/api/heal/test", dependencies=[Depends(require_token)])
+async def heal_test(req: HealTestRequest, rt=Depends(get_runtime)):
+    """Testa a cura com pokémon no jogo (após alguns segundos para o jogador voltar ao jogo)."""
+    if not rt.heal_test(req.action, req.delay_s):
+        raise HTTPException(status_code=409, detail="A rotina de cura já está rodando.")
+    return {"status": "agendado", "action": req.action}
+
+
 # ---------------------------------------------------------------- Sprites de itens
 
 # Último print tirado pelo console: o recorte é feito sobre ele, pixel a pixel, no servidor
