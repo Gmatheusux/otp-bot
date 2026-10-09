@@ -205,7 +205,11 @@ function RegionSelector({ src, size, region, onChange }) {
 
   const onPointerDown = (event) => {
     event.preventDefault()
-    surface.current.setPointerCapture(event.pointerId)
+    try {
+      surface.current.setPointerCapture(event.pointerId)
+    } catch {
+      // ponteiro inválido: o arraste funciona sem a captura
+    }
     start.current = toPoint(event)
     onChange({ ...start.current, w: 0, h: 0 })
   }

@@ -61,5 +61,16 @@ export function useBotConfig() {
     }, SAVE_DEBOUNCE_MS)
   }, [])
 
-  return { config, loading, error, saveState, setValue }
+  /** Relê do servidor quando ele mesmo altera o config (ex: nova referência de calibração). */
+  const reload = useCallback(async () => {
+    try {
+      const data = await apiFetch(CONFIG_URL)
+      latest.current = data
+      setConfig(data)
+    } catch (err) {
+      setError(err)
+    }
+  }, [])
+
+  return { config, loading, error, saveState, setValue, reload }
 }

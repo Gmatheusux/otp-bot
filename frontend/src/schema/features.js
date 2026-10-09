@@ -246,6 +246,13 @@ export const TABS = [
     ],
   },
   {
+    id: 'calibracao',
+    label: 'Calibração',
+    icon: 'crosshair',
+    description: 'Onde ficam HP, EXP, seus pokémons e as outras partes da tela que o bot lê.',
+    custom: 'calibration',
+  },
+  {
     id: 'atalhos',
     label: 'Atalhos',
     icon: 'keyboard',

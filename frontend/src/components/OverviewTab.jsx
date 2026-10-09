@@ -3,6 +3,7 @@ import { Toggle } from './fields.jsx'
 import { Card } from './Section.jsx'
 import TelemetryPanel from './TelemetryPanel.jsx'
 import LogPanel from './LogPanel.jsx'
+import ReadingsPanel from './ReadingsPanel.jsx'
 import Icon from './Icon.jsx'
 import { getPath } from '../lib/config.js'
 
@@ -111,6 +112,8 @@ export default function OverviewTab({ status, offline, logs, connected, control,
           </div>
         </Card>
       </div>
+
+      <ReadingsPanel readings={offline ? null : status?.readings} />
 
       <TelemetryPanel status={offline ? null : status} />
 

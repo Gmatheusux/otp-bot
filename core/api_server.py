@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from core import runtime as runtime_module
-from modules import sprite_library
+from modules import screen_calibration, sprite_library
 
 logger = logging.getLogger("APIServer")
 
@@ -271,6 +271,56 @@ async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(ge
         return await asyncio.to_thread(sprites.match, sprite_id, frame)
     except KeyError:
         raise HTTPException(status_code=404, detail="Sprite não encontrado.")
+
+
+# ---------------------------------------------------------------- Calibração da tela
+
+REFERENCE_IMAGE = Path("assets/calibration/reference.png")
+
+
+class CalibrationTest(BaseModel):
+    source: Literal["reference", "screen"] = "reference"
+    delay_s: float = Field(default=0, ge=0, le=10)
+
+
+@app.get("/api/calibration/reference", dependencies=[Depends(require_token)])
+async def calibration_reference():
+    if not REFERENCE_IMAGE.exists():
+        raise HTTPException(status_code=404, detail="Nenhuma imagem de referência salva.")
+    return Response(content=REFERENCE_IMAGE.read_bytes(), media_type="image/png")
+
+
+@app.post("/api/calibration/reference", dependencies=[Depends(require_token)])
+async def set_calibration_reference(req: ScreenshotRequest, rt=Depends(get_runtime)):
+    """Troca a referência por um print atual e reescala as regiões para a nova largura."""
+    await asyncio.sleep(req.delay_s)
+    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    REFERENCE_IMAGE.parent.mkdir(parents=True, exist_ok=True)
+    REFERENCE_IMAGE.write_bytes(sprite_library.encode_png(frame))
+
+    config = rt.config_manager.config
+    calibration = config["calibration"]
+    factor = frame.shape[1] / float(calibration.get("base_width") or frame.shape[1])
+    for region in calibration["regions"].values():
+        for k in ("x", "y", "w", "h"):
+            region[k] = int(round(region[k] * factor))
+    calibration["base_width"] = int(frame.shape[1])
+    rt.config_manager.update_full_config(config)
+    return {"status": "ok", "width": int(frame.shape[1]), "height": int(frame.shape[0])}
+
+
+@app.post("/api/calibration/test", dependencies=[Depends(require_token)])
+async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
+    """Lê as barras na imagem de referência ou num print novo da tela."""
+    if req.source == "reference":
+        if not REFERENCE_IMAGE.exists():
+            raise HTTPException(status_code=404, detail="Nenhuma imagem de referência salva.")
+        frame = sprite_library.decode_image(REFERENCE_IMAGE.read_bytes())
+    else:
+        await asyncio.sleep(req.delay_s)
+        frame = await asyncio.to_thread(sprite_library.capture_screen)
+    readings = await asyncio.to_thread(screen_calibration.read_regions, frame, rt.config_manager.config["calibration"])
+    return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 
 
 # O console compilado (npm run build) é servido na raiz. Rotas da API acima têm prioridade.

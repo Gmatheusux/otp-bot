@@ -13,7 +13,8 @@ from core.mouse_controller import MouseController
 from core.config_manager import ConfigManager
 from core.navigator import Navigator
 from core.decision_thread import decision_thread
-from modules.sprite_library import SpriteLibrary
+from modules.sprite_library import SpriteLibrary, capture_screen
+from modules.screen_calibration import read_regions
 
 # Configuração de Logs
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -89,6 +90,18 @@ async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_eve
     logger.info("Thread de Percepção encerrada (Kill Event).")
 
 
+async def calibration_monitor(config_mgr: ConfigManager, kill_event: asyncio.Event, telemetry: dict) -> None:
+    """Lê HP, EXP e o time 2x por segundo. Só observa a tela, por isso roda mesmo pausado."""
+    while not kill_event.is_set():
+        try:
+            frame = await asyncio.to_thread(capture_screen)
+            telemetry["readings"] = await asyncio.to_thread(read_regions, frame, config_mgr.config.get("calibration", {}))
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            logger.error(f"Erro na leitura da calibração: {e}")
+            await asyncio.sleep(2)
+
+
 async def run_bot(port: int, ready: threading.Event) -> None:
     logger.info("Iniciando Bot Poketibia (Utility AI) - Inicialização do Core...")
 
@@ -141,8 +154,10 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry))
     chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.get_features().get("safety", {})))
 
+    calibration_task = asyncio.create_task(calibration_monitor(config_mgr, kill_event, rt.telemetry))
+
     # Aguarda o sinal de Kill ser processado e encerrar as threads
-    await asyncio.gather(perception_task, decision_task, chat_task)
+    await asyncio.gather(perception_task, decision_task, chat_task, calibration_task)
 
     navigator.stop_playback()
     navigator.stop_recording()

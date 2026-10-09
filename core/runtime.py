@@ -30,6 +30,7 @@ class BotRuntime:
             "detections": 0,
             "mobs_on_screen": 0,
             "is_boxed": False,
+            "readings": {},  # barras lidas pela calibração (HP, EXP, time)
         }
 
     def status(self) -> Dict[str, Any]:

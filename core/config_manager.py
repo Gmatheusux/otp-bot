@@ -3,6 +3,8 @@ import json
 import os
 import logging
 
+from modules.screen_calibration import DEFAULT_CALIBRATION
+
 logger = logging.getLogger("ConfigManager")
 
 
@@ -57,6 +59,7 @@ DEFAULT_CONFIG = {
         "extras": {"food": {"enabled": False, "key": "", "interval_s": 300}},
         "guild": {"daily": False, "tier": "normal", "element": "normal"},
     },
+    "calibration": copy.deepcopy(DEFAULT_CALIBRATION),
 }
 
 
