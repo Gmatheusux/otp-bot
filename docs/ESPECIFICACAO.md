@@ -130,6 +130,9 @@ Para quando **qualquer** destas condições acontecer [Q9, Q11, Q50]:
 | **Gravação jogando:** você faz a hunt e o bot registra as coordenadas, onde você **para** (e por quanto tempo) e **todas as teclas** que você aperta | [Q42, Q47] |
 | Movimento pelo **teclado numérico com Num Lock desligado**: 7 ↖ · 8 ↑ · 9 ↗ · 4 ← · 6 → · 1 ↙ · 2 ↓ · 3 ↘ | [Q43] |
 | Posição pelas **coordenadas `x, y, z`** do canto do minimapa | [Q44] |
+| A caixinha mostra `x, y, z` (ex.: `433, 1501, 7`) em texto branco com contorno preto; fica **no mesmo lugar e com os mesmos pixels em 1920 e 3440** (área cliente: x = largura − 386, y = 31, 88×18) | [E08] |
+| Eixos: **8 (↑) diminui o y**, **6 (→) aumenta o x** | [E08] |
+| A coordenada muda **0,20–0,28 s** depois da tecla. **O jogo ignora a tecla que chega logo depois de um passo** (fim da animação); repetida ~0,4 s depois, passa | [E08] |
 | Tipos de ponto: **andar**, **parar e lurar**, **parar e matar**, **escada** | [Q45] |
 | Se perdeu (empurrado, travado, teleportado): **para e avisa** | [Q46] |
 | **Várias hunts salvas**; cada hunt = rota + pokémon-alvo + regras | [Q47, Q58] |

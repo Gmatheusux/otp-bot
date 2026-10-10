@@ -279,6 +279,18 @@ as teclas com horário. O resultado é um **rascunho** que você revisa no edito
 com um papel. Na v1.0 só há **dano** e **curador**; o endgame [Q63] acrescenta **lure** e **2º dano** sem mudar a
 estrutura.
 
+### 5.1 Como ficou na E08 (2026-10-10)
+
+| Peça | Arquivo | Contrato |
+|---|---|---|
+| Coordenadas | `perception/coords.py` | `CoordReader.read(frame, calibração)` / `read_crop` → `CoordReading(coord, confiança, texto)`. Dígitos-modelo em `defaults/coords/*.png` (0–9 e `comma`), Jaccard por caractere, nota ≥ 0,92 e folga ≥ 0,08; senão `coord=None`. `coords_monitor` publica `coords` (`Coord(x, y, z)`) ~10x/s copiando só a região `coords` (`GameLocator.capture(region)`) |
+| Movimento | `actuation/movement.py` | `Mover(queue, store)`: `step(lease, (dx, dy))` → `Step.OK/BLOCKED/OFF/NO_READING/REFUSED`; `walk_to(lease, Coord)` → `Walk.ARRIVED/LOST/NO_READING/REFUSED` com a lista de passos e o motivo. Teclas `num1…num9` (Num Lock off) pela fila; a tecla engolida é repetida a cada 0,4 s até 1,5 s |
+| Hunt | `hunts/hunt_model.py` | `Hunt(name, route[Waypoint(x, y, z, kind, wait_s)], targets, balls, team[TeamMember(name, role, key, slot)], rules)`; `problems()` / `validate()`; `save_hunt`, `load_hunt`, `list_hunts` em `%APPDATA%\OTPBot\hunts\<nome>.json` (`version` 1). Papéis `damage`, `healer`, `lure`, `damage2`; a v1 aceita só 1 `damage` e até 1 `healer` |
+
+Ferramentas: `tools/coord_glyphs.py` (lê a caixinha e cria modelos novos) e `tools/move_test.py` (read / step / walk
+pela pilha real, como administrador). O `Mover` ainda não é chamado pela Hunt: isso é da E10, que decide o que fazer
+com `LOST` (parar e avisar).
+
 ---
 
 ## 6. Aprendizado
@@ -511,7 +523,7 @@ sequenceDiagram
 |---|---|---|---|
 | **R1** | O cliente **não aceitar teclas por PostMessage** (sem foco) | Alto: você não poderia usar o monitor principal enquanto o bot joga | ✅ **Resolvido na E01** (§4.1): PostMessage funciona sem foco para numérico, F5 e clique, desde que o bot rode como administrador como o jogo (D20). Plano B (primeiro plano) fica de reserva |
 | R2 | **8 GB de VRAM** para jogo + inferência + treino ao mesmo tempo | Médio | Modelo pequeno (YOLO n/s), inferência ONNX com pouca memória, treino com batch pequeno e prioridade baixa; pausar o treino se o FPS cair |
-| R3 | Ler `x, y, z` com precisão | Médio | Dígitos-modelo (fonte fixa do jogo) em vez de Tesseract; validar contra o passo dado |
+| R3 | Ler `x, y, z` com precisão | Médio | ✅ **E08**: dígitos-modelo (fonte fixa do jogo) em vez de Tesseract; cada passo validado pela coordenada. Ao vivo, nenhuma leitura errada em 34 passos e ~220 leituras seguidas (§5.1) |
 | R4 | Cor do corpo shiny parecida com o normal | Médio | Classe `corpo_shiny` no YOLO + rastrear o shiny desde vivo até cair |
 | R5 | Mudanças de layout do cliente | Baixo | Calibração por perfil + checklist ao iniciar |
 | R6 | Credenciais das contas | Médio | Gerenciador de Credenciais do Windows (criptografado pelo próprio Windows); nunca em texto no disco nem no log |
