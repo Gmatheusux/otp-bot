@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza** |
-| Última etapa concluída | E01: Git, spike de entrada sem foco e janela do jogo (2026-10-09) |
+| **Etapa atual** | **E03: WorldState, árbitro, fila e trava de entrada** |
+| Última etapa concluída | E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza (2026-10-10) |
 | Bloqueios | Material do jogo pendente (necessário a partir da E04) |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
 | Material do jogo recebido | ❌ nenhum ainda (ver §6) |
-| Última atualização | 2026-10-09, conversa E01 |
+| Última atualização | 2026-10-10, conversa E02 |
 
 ---
 
@@ -154,6 +154,7 @@ OTP Bot/
 │  ├─ learning/     session_recorder.py, dataset.py, optimizer.py
 │  ├─ extras/       launcher.py, overlay.py, alerts.py
 │  └─ interface/    api_server.py, config_manager.py
+├─ defaults/                      padrões do programa (prints de referência da calibração)
 ├─ trainer/                       kit de treino (processo separado)
 ├─ frontend/                      console React
 ├─ tests/
@@ -162,8 +163,10 @@ OTP Bot/
 └─ docs/                          ESPECIFICACAO, ARQUITETURA, analise-bot-externo/
 ```
 
-Módulos que **saem**: `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`, `modules/ui_analyzer.py`,
-`core/navigator.py` (rota por pixel).
+Módulos que **saem**: `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`, `modules/ui_analyzer.py`
+(removidos na E02) e `core/navigator.py` (rota por pixel). O navigator ficou em `otpbot/hunts/navigator.py` até a
+**E09**, quando o gravador e a rota por coordenadas o substituem (decisão do usuário na E02: remover agora mudaria o
+comportamento).
 
 ### 3.2 Estado do código no início (E00)
 
@@ -192,8 +195,8 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 |---|---|---|---|---|---|
 | E00 | Análise e arquitetura | — | — | — | ✅ |
 | E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ✅ |
-| E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ⬜ **próxima** |
-| E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ⬜ |
+| E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ✅ |
+| E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ⬜ **próxima** |
 | E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ⬜ |
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
 | E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | ⬜ |
@@ -242,12 +245,14 @@ ou salva em arquivo; (4) testes passando.
 **Objetivo:** levar o código atual para a estrutura da §3.1 **sem mudar comportamento**.
 **Leitura obrigatória:** `docs/ARQUITETURA.md` §7 e §8.3.
 
-- [ ] Criar o pacote `otpbot/` e mover os módulos atuais para as camadas (renomeando conforme a §7 da arquitetura).
-- [ ] `app/paths.py`: dados em `%APPDATA%\OTPBot` (config, sprites, calibração, logs); migração automática dos
-  arquivos atuais.
-- [ ] Remover os módulos sem uso e as dependências sem uso do `requirements.txt`.
-- [ ] Unificar a região do chat (`features.safety.chat_roi` × calibração).
-- [ ] Atualizar o `README.md` (estrutura e caminhos).
+- [x] Criar o pacote `otpbot/` e mover os módulos atuais para as camadas (renomeando conforme a §7 da arquitetura).
+  *(Renomeados só os 1:1; `vision_engine`, `decision_thread`, `heal_routine` e `action_orchestrator` mantêm o nome
+  até a etapa que cria o substituto: E05, E03, E11, E03.)*
+- [x] `app/paths.py`: dados em `%APPDATA%\OTPBot` (config, sprites, calibração, modelos, rota, logs); migração
+  automática dos arquivos atuais (só copia, nunca apaga nem sobrescreve).
+- [x] Remover os módulos sem uso e as dependências sem uso do `requirements.txt`. *(O `navigator` fica até a E09.)*
+- [x] Unificar a região do chat (`features.safety.chat_roi` × calibração). *(Fonte única: região `chat` do perfil.)*
+- [x] Atualizar o `README.md` (estrutura e caminhos).
 
 **Aceite:** bot abre, console funciona, leituras de barras e sprites iguais às de antes; testes passando; nenhum
 arquivo de dados dentro da pasta do código.
@@ -332,6 +337,8 @@ nome estranho.
 - [ ] `hunts/recorder.py`: grava posições, paradas (tempo), teclas apertadas e escadas → rascunho de rota.
 - [ ] Aba **Rota/Mapa**: posição atual, editor de pontos (andar, lurar, matar, escada).
 - [ ] Aba **Hunt**: escolher a hunt salva e iniciar.
+- [ ] Remover o cavebot por pixel (`otpbot/hunts/navigator.py`, `/api/route` antigo, F10/F11 e `route.json`),
+  substituído pelo gravador (adiado da E02).
 
 **Aceite:** gravar uma volta real e obter um rascunho coerente (pontos de matar onde o combo foi usado).
 
@@ -431,6 +438,46 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - Pendências e desvios:
 - Próxima etapa e o que o usuário precisa providenciar:
 ```
+
+### E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza (2026-10-10)
+- **Feito:** `core/` e `modules/` movidos para `otpbot/{app,interface,perception,brain,actuation,hunts}` com `git mv`
+  (mapa de/para em `docs/ARQUITETURA.md` §7); `otpbot/app/paths.py` (dados em `%APPDATA%\OTPBot`, `OTPBOT_DATA_DIR`
+  para trocar, migração que só copia e nunca sobrescreve nem apaga); prints de referência padrão em
+  `defaults/calibration/`; `config.json` e `assets/sprites/sprites.json` fora do git (e no `.gitignore`); log em
+  arquivo (`logs/otpbot.log`); `model_path` relativo vale a partir da pasta de dados; monitor de GM lê a região `chat`
+  da calibração (OCR em bloco, `--psm 6`) e `features.safety.chat_roi` saiu do config e da aba Segurança; removidos
+  `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`, `modules/ui_analyzer.py` (+ `test_fuzzy.py` e
+  `test_e2e_emulation.py`, que só testavam o `ai/`) e as dependências `scikit-fuzzy`, `scikit-learn`, `bezier`,
+  `py_trees`; 10 testes novos (`test_paths.py`, `test_chat.py`, `conftest.py` isola a pasta de dados); README atualizado.
+- **Critérios de aceite:**
+  1. Bot abre e console funciona: `python main.py --no-window` na `main` com os dados reais → "Dados em
+     C:\Users\Gabe\AppData\Roaming\OTPBot", `GET /` = 200 com o console compilado (`npm run build` refeito),
+     `/api/status`, `/api/config`, `/api/sprites`, `/api/route` e `/api/calibration/test` respondendo; bot abre
+     pausado. A janela pywebview não foi aberta nesta conversa.
+  2. Leituras de barras iguais: `read_regions` do código antigo (`git show HEAD:modules/screen_calibration.py`) e do
+     novo dão resultado **idêntico** nas duas imagens de referência (1920: HP 100, pokémon 96,1, EXP 93,8, time
+     [95,2, 100, 100, 100], postura ofensiva). Sprites: código igual, nenhum sprite salvo ainda; testes de sprites
+     passando. **Conferência ao vivo com o jogo aberto fica com o usuário.**
+  3. Testes: antes **41 passed**; depois **47 passed** (41 − 4 do `ai/` + 10 novos), na worktree e na `main`.
+  4. Nenhum arquivo de dados na pasta do código: migração real da pasta principal para `%APPDATA%\OTPBot` conferida
+     por hash (config.json, sprites.json, 2 prints de referência: todos iguais) **antes** do merge, que tirou o
+     `config.json` e o `sprites.json` versionados. Na pasta do código sobraram só pastas vazias (`assets/`, `logs/`,
+     `models/`).
+- **Decisões novas / mudanças na arquitetura:** sem D nova. Por decisão do usuário: o `navigator` (rota por pixel)
+  fica em `otpbot/hunts/navigator.py` até a **E09** (item novo na §5); a região do chat tem fonte única na calibração.
+  Módulos cujo nome novo pertence a outra etapa mantiveram o nome (`vision_engine`, `decision_thread`,
+  `heal_routine`, `action_orchestrator`).
+- **Fatos novos do jogo:** nenhum.
+- **Pendências e desvios:**
+  - A região `chat` da calibração pega 2–3 linhas; o OCR passou de linha única (`psm 7`) para bloco (`psm 6`). Validar
+    com o Tesseract instalado e uma mensagem de GM de teste (o Tesseract não está instalado neste PC: o monitor de GM
+    fica desligado na sessão).
+  - `reference_3440x1440.png` não tem 3440 de largura e é lida com o perfil 1920 (igual antes da E02; não mexido).
+  - `scratch/` versionado tem um `test_decision_thread.py` quebrado (importa `DecisionThread`, que não existe).
+  - `platform/dpi.py` e `app/updater.py` não foram criados (E03/E15).
+  - Pastas vazias `assets/`, `logs/` e `models/` na pasta principal podem ser apagadas à mão.
+- **Próxima etapa:** E03. O usuário precisa ter o jogo aberto (para conferir que as leituras ao vivo não mudaram e
+  para os sensores com `capture_client`).
 
 ### E01: Git, spike de entrada sem foco e janela do jogo (2026-10-09)
 - **Feito:** `otpbot/platform/game_window.py` (janela pela classe `PokeAllianceV3`, monitor, retângulo do cliente,

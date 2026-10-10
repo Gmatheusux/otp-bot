@@ -362,6 +362,26 @@ Reaproveitado e renomeado: `screen_calibration`, `vision_engine`, `chat_analyzer
 Sai: `navigator.py` (rota por pixel), `ai/`, `core/keyboard.py`, `core/mouse.py`, `modules/vision.py`,
 `modules/ui_analyzer.py`.
 
+**Estado após a E02 (2026-10-10):** todo o código está em `otpbot/`. Mapa de/para:
+
+| Antes | Agora | Observação |
+|---|---|---|
+| `core/runtime.py` | `app/runtime.py` | |
+| — | `app/paths.py` | `%APPDATA%\OTPBot` + migração dos arquivos antigos (só copia) |
+| `core/api_server.py`, `core/config_manager.py` | `interface/` | |
+| `modules/screen_calibration.py` | `perception/bars.py` | |
+| `modules/chat_analyzer.py` | `perception/chat.py` | região = `chat` do perfil de calibração (`safety.chat_roi` saiu) |
+| `modules/sprite_library.py` | `perception/sprites.py` + `perception/capture.py` | |
+| `modules/vision_engine.py` | `perception/vision_engine.py` | vira `yolo_onnx.py` na E05 |
+| `modules/spatial_analyzer.py` | `perception/spatial_analyzer.py` | não estava no diagrama |
+| `core/decision_thread.py` | `brain/decision_thread.py` | vira `arbiter.py` + comportamentos na E03 |
+| `core/heal_routine.py` | `brain/heal_routine.py` | vira a fase "curar" na E11 |
+| `core/action_orchestrator.py` | `actuation/action_orchestrator.py` | vira `action_queue.py` na E03 |
+| `core/mouse_controller.py` | `actuation/mouse.py` | |
+| `core/navigator.py` | `hunts/navigator.py` | **sai na E09** (adiado pelo usuário: remover na E02 mudaria o comportamento) |
+
+Os removidos da lista "Sai" acima, exceto o `navigator`, foram apagados na E02.
+
 ---
 
 ## 8. O executável
