@@ -4,6 +4,8 @@ import logging
 import keyboard
 from typing import Any, Dict, Optional
 
+from otpbot.platform.input_backend import DEFAULT_BACKEND, make_backend, parse_key
+
 logger = logging.getLogger("BotRuntime")
 
 
@@ -32,8 +34,16 @@ class BotRuntime:
             "is_boxed": False,
             "readings": {},  # barras lidas pela calibração (HP, EXP, time)
             "heal_routine": "parado",
+            "game_window": None,      # "1920x1009 em \\.\DISPLAY2" ou None
+            "input_backend": None,
+            "integrity": None,        # D20: {"ok", "bot", "game", "message"}
+            "active_behavior": None,
+            "input_owner": None,
         }
         self.heal_routine = None
+        self.arbiter = None   # brain/arbiter.py; dono da trava de entrada
+        self.locator = None   # perception/capture.GameLocator
+        self.queue = None     # actuation/action_queue.ActionQueue
 
     def status(self) -> Dict[str, Any]:
         return {
@@ -53,6 +63,8 @@ class BotRuntime:
             elif not running and self.pause_event.is_set():
                 logger.info(">>> BOT PAUSADO <<<")
                 self.pause_event.clear()
+                if self.arbiter is not None:
+                    self.loop.create_task(self.arbiter.halt())  # corta a entrada já, sem esperar o tick
         self.loop.call_soon_threadsafe(apply)
 
     def toggle_running(self):
@@ -63,6 +75,8 @@ class BotRuntime:
             if not self.kill_event.is_set():
                 logger.warning(">>> KILL SWITCH ACIONADO - INICIANDO SHUTDOWN <<<")
                 self.kill_event.set()
+                if self.arbiter is not None:
+                    self.arbiter.lock.revoke_all()  # nada mais sai, nem o que já estava na fila
                 # Libera quem estiver bloqueado em pause_event.wait() para enxergar o kill
                 self.pause_event.set()
         try:
@@ -87,16 +101,18 @@ class BotRuntime:
     def heal_test(self, action: str, delay_s: float) -> bool:
         """Botões de teste da cura: troca para o curador/farm ou roda a rotina inteira."""
         routine = getattr(self, "heal_routine", None)
-        if routine is None or routine.running:
+        if routine is None or routine.running or self.arbiter is None:
             return False
 
-        async def job():
-            import pyautogui
-            await asyncio.sleep(delay_s)
+        async def test():
             config = self.config_manager.config
             cfg = config.get("features", {}).get("heal", {}).get("pokemon_heal", {})
             calibration = config.get("calibration", {})
-            size = tuple(pyautogui.size())
+            window = self.locator.window() if self.locator else None
+            if window is None:
+                logger.warning("Teste da cura: janela do jogo não encontrada.")
+                return
+            size = window.size  # cliques em pixels da área cliente
             if action == "full":
                 revive = config.get("pokemon_profile", {}).get("revive_key", "")
                 result = await routine.run(cfg, calibration, size, fallback_revive_key=revive)
@@ -105,6 +121,12 @@ class BotRuntime:
                 ok = await routine.swap(cfg, action, calibration, size)
                 who = "de cura" if action == "healer" else "de farm"
                 logger.info(f"Teste: troca para o pokémon {who} {'enviada' if ok else 'não configurada'}")
+
+        async def job():
+            await asyncio.sleep(delay_s)
+            # Passa pela trava como a Hunt: a Segurança ainda pode interromper
+            if not await self.arbiter.run_exclusive("teste_cura", test):
+                logger.warning("Teste da cura não rodou: outro comportamento está com a entrada.")
 
         self.loop.create_task(job())
         return True
@@ -143,13 +165,28 @@ class BotRuntime:
                 logger.warning(f"Tecla de {label} não definida: o bot não vai usar essa ação. Escolha na aba Atalhos.")
                 continue
             try:
-                keyboard.key_to_scan_codes(key)
-            except ValueError:
-                logger.warning(f"Tecla de {label} inválida: '{key}'. Use a captura de tecla na aba Atalhos.")
+                parse_key(key)
+            except ValueError as e:
+                logger.warning(f"Tecla de {label} inválida: '{key}' ({e}). Use a captura de tecla na aba Atalhos.")
+
+    def apply_input_backend(self):
+        """Backend de entrada da config (`input.backend`): background (padrão, D11) ou foreground."""
+        if self.queue is None:
+            return
+        name = self.config_manager.config.get("input", {}).get("backend", DEFAULT_BACKEND)
+        current = getattr(self.queue.backend, "name", None)
+        if current == name:
+            return
+        if self.queue.backend is not None:
+            self.queue.release_all()
+        self.queue.backend = make_backend(name, self.locator.window if self.locator else (lambda: None))
+        self.telemetry["input_backend"] = self.queue.backend.name
+        logger.info(f"Backend de entrada: {self.queue.backend.name}")
 
     def config_changed(self):
         self.apply_hotkeys()
         self.validate_game_keys()
+        self.apply_input_backend()
 
 
 runtime: Optional[BotRuntime] = None

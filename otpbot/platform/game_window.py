@@ -120,6 +120,26 @@ def locate(class_name: str = GAME_WINDOW_CLASS) -> Optional[GameWindow]:
     return describe(hwnd) if hwnd else None
 
 
+def sample_points(rect: Rect, inset: int = 12) -> List[Tuple[int, int]]:
+    """Centro e cantos (recuados) da área cliente, em coordenadas da tela."""
+    l, t, r, b = rect.left + inset, rect.top + inset, rect.right - inset - 1, rect.bottom - inset - 1
+    return [((l + r) // 2, (t + b) // 2), (l, t), (r, t), (l, b), (r, b)]
+
+
+def is_covered(window: GameWindow, owner_at=None) -> bool:
+    """
+    Outra janela por cima da área cliente? A captura copia a tela (mss), então com o jogo coberto ela pegaria a
+    janela de cima [E01/E03]. `owner_at(x, y)` devolve a janela raiz naquele ponto.
+    """
+    if owner_at is None:
+        import win32gui
+
+        def owner_at(x, y):
+            hwnd = win32gui.WindowFromPoint((x, y))
+            return win32gui.GetAncestor(hwnd, 2) if hwnd else 0  # GA_ROOT
+    return any(owner_at(x, y) != window.hwnd for x, y in sample_points(window.client))
+
+
 def _new_mss():
     import mss
     return (getattr(mss, "MSS", None) or mss.mss)()

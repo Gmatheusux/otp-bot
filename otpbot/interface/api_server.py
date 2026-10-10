@@ -19,7 +19,7 @@ from otpbot.app import paths
 from otpbot.app import runtime as runtime_module
 from otpbot.perception import bars as screen_calibration
 from otpbot.perception import sprites as sprite_library
-from otpbot.perception.capture import capture_screen
+from otpbot.perception.capture import capture_for_console
 
 logger = logging.getLogger("APIServer")
 
@@ -34,6 +34,12 @@ app = FastAPI(title="OTP Bot - Console API", version="1.1.0", docs_url=None, red
 def require_token(x_otp_token: Optional[str] = Header(default=None)):
     if not x_otp_token or not secrets.compare_digest(x_otp_token, SESSION_TOKEN):
         raise HTTPException(status_code=401, detail="Token de sessão inválido.")
+
+
+def console_frame():
+    """Print da área cliente do jogo (as regiões da calibração são relativas a ela); sem o jogo, o monitor."""
+    rt = runtime_module.runtime
+    return capture_for_console(rt.locator if rt is not None else None)
 
 
 def get_runtime():
@@ -214,7 +220,7 @@ async def take_screenshot(req: ScreenshotRequest):
     """Espera alguns segundos (para o jogador trocar para o jogo) e devolve o print em PNG."""
     global _last_screenshot
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(capture_screen)
+    frame = await asyncio.to_thread(console_frame)
     _last_screenshot = frame
     png = await asyncio.to_thread(sprite_library.encode_png, frame)
     return Response(content=png, media_type="image/png")
@@ -282,7 +288,7 @@ async def delete_sprite(sprite_id: str, sprites=Depends(get_sprites)):
 async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(get_sprites)):
     """Tira um print novo e diz se o bot encontra o item nele."""
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(capture_screen)
+    frame = await asyncio.to_thread(console_frame)
     try:
         return await asyncio.to_thread(sprites.match, sprite_id, frame)
     except KeyError:
@@ -319,7 +325,7 @@ async def set_calibration_reference(req: ScreenshotRequest, rt=Depends(get_runti
     Resolução nova vira um perfil novo, copiado do mais próximo e escalado pela largura.
     """
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(capture_screen)
+    frame = await asyncio.to_thread(console_frame)
     height, width = frame.shape[:2]
     key = f"{width}x{height}"
     paths.calibration_dir().mkdir(parents=True, exist_ok=True)
@@ -350,7 +356,7 @@ async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
         frame = sprite_library.decode_image(path.read_bytes())
     else:
         await asyncio.sleep(req.delay_s)
-        frame = await asyncio.to_thread(capture_screen)
+        frame = await asyncio.to_thread(console_frame)
     readings = await asyncio.to_thread(screen_calibration.read_regions, frame, calibration, req.profile)
     return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 

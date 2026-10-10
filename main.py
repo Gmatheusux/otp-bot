@@ -10,15 +10,22 @@ import keyboard
 from otpbot.app import paths
 from otpbot.app import runtime as runtime_module
 from otpbot.app.runtime import BotRuntime
-from otpbot.actuation.action_orchestrator import UtilityOrchestrator
-from otpbot.actuation.mouse import MouseController
+from otpbot.actuation.action_queue import ActionQueue, Click
+from otpbot.actuation.input_lock import InputLock
 from otpbot.interface.config_manager import ConfigManager
 from otpbot.hunts.navigator import Navigator
-from otpbot.brain.decision_thread import decision_thread, press_key_action, click_action
+from otpbot.brain.arbiter import Arbiter
+from otpbot.brain.behaviors.base import BrainContext
+from otpbot.brain.behaviors.companion import CompanionBehavior
+from otpbot.brain.behaviors.hunt import HuntBehavior
+from otpbot.brain.behaviors.safety import SafetyBehavior
+from otpbot.brain.behaviors.survival import SurvivalBehavior
 from otpbot.brain.heal_routine import PokemonHealRoutine
-from otpbot.perception.capture import capture_screen
+from otpbot.perception.capture import GameLocator
 from otpbot.perception.sprites import SpriteLibrary
 from otpbot.perception.bars import read_regions
+from otpbot.platform.input_backend import check_integrity
+from otpbot.state.world_state import WorldStore
 
 # Configuração de Logs
 LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -37,7 +44,7 @@ API_HOST = "127.0.0.1"  # Só a própria máquina acessa o console
 
 
 class MockVision:
-    def process_frame(self, **kwargs): return []
+    def infer(self, img, conf_threshold=0.5): return []
 
 
 def load_vision_engine(engine_cfg: dict, telemetry: dict):
@@ -61,10 +68,18 @@ def load_vision_engine(engine_cfg: dict, telemetry: dict):
     return vision_engine
 
 
-async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_event: asyncio.Event, kill_event: asyncio.Event, config_mgr: ConfigManager, telemetry: dict) -> None:
+def describe_window(window) -> str:
+    if window is None:
+        return None
+    monitor = window.monitor.device if window.monitor else "?"
+    return f"{window.client.width}x{window.client.height} em {monitor}"
+
+
+async def perception_thread(vision_engine, locator: GameLocator, store: WorldStore, pause_event: asyncio.Event,
+                            kill_event: asyncio.Event, config_mgr: ConfigManager, telemetry: dict) -> None:
     """
-    Thread de Percepção: Lê o buffer de tela e envia o estado da inferência.
-    Respeita eventos de Pause e Kill de forma limpa.
+    Sensor YOLO: print da área cliente do jogo -> detecções (relativas ao cliente) publicadas no WorldState.
+    Cada publicação de "detections" é um tick do árbitro. Respeita Pause e Kill.
     """
     logger.info("Thread de Percepção iniciada.")
     last_frame_at = None
@@ -78,7 +93,14 @@ async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_eve
             engine_cfg = config_mgr.get_engine_config()
             fps_target = engine_cfg.get("fps_target", 30)
             frame_time = 1.0 / fps_target if fps_target > 0 else 0.033
-            detections = await asyncio.to_thread(vision_engine.process_frame, conf_threshold=engine_cfg.get("confidence", 0.5))
+            frame, window = await asyncio.to_thread(locator.capture)
+            store.publish("window", window)
+            telemetry["game_window"] = describe_window(window)
+            if frame is None:
+                store.publish("detections", None, confidence=0.0)  # sem jogo: ninguém age
+                await asyncio.sleep(0.5)
+                continue
+            detections = await asyncio.to_thread(vision_engine.infer, frame, engine_cfg.get("confidence", 0.5))
 
             now = time.perf_counter()
             if last_frame_at is not None:
@@ -88,13 +110,7 @@ async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_eve
             last_frame_at = now
             telemetry["detections"] = len(detections)
 
-            if state_queue.full():
-                try:
-                    state_queue.get_nowait()
-                except asyncio.QueueEmpty:
-                    pass
-
-            await state_queue.put(detections)
+            store.publish("detections", detections)
             await asyncio.sleep(frame_time)
         except Exception as e:
             logger.error(f"Erro na thread de percepção: {e}")
@@ -103,12 +119,30 @@ async def perception_thread(vision_engine, state_queue: asyncio.Queue, pause_eve
     logger.info("Thread de Percepção encerrada (Kill Event).")
 
 
-async def calibration_monitor(config_mgr: ConfigManager, kill_event: asyncio.Event, telemetry: dict) -> None:
-    """Lê HP, EXP e o time 2x por segundo. Só observa a tela, por isso roda mesmo pausado."""
+async def calibration_monitor(config_mgr: ConfigManager, locator: GameLocator, store: WorldStore,
+                              kill_event: asyncio.Event, telemetry: dict) -> None:
+    """
+    Sensor das barras: HP, EXP, Pokébar e postura 2x por segundo, na área cliente do jogo. Só observa a tela,
+    por isso roda mesmo pausado. Também confere a integridade do bot x jogo (D20) quando a janela aparece.
+    """
+    checked_hwnd = None
     while not kill_event.is_set():
         try:
-            frame = await asyncio.to_thread(capture_screen)
-            telemetry["readings"] = await asyncio.to_thread(read_regions, frame, config_mgr.config.get("calibration", {}))
+            frame, window = await asyncio.to_thread(locator.capture)
+            telemetry["game_window"] = describe_window(window)
+            if window is not None and window.hwnd != checked_hwnd:
+                checked_hwnd = window.hwnd
+                integrity = await asyncio.to_thread(check_integrity, window.hwnd)
+                telemetry["integrity"] = integrity
+                (logger.info if integrity["ok"] else logger.warning)(f"Integridade (D20): {integrity['message']}")
+            if frame is None:
+                telemetry["readings"] = {}
+                store.publish("bars", None, confidence=0.0)
+                await asyncio.sleep(1)
+                continue
+            readings = await asyncio.to_thread(read_regions, frame, config_mgr.config.get("calibration", {}))
+            telemetry["readings"] = readings
+            store.publish("bars", readings)
             await asyncio.sleep(0.5)
         except Exception as e:
             logger.error(f"Erro na leitura da calibração: {e}")
@@ -121,12 +155,25 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     config_mgr = ConfigManager()
     engine_cfg = config_mgr.get_engine_config()
 
-    orchestrator = UtilityOrchestrator()
-    mouse_controller = MouseController()
-    navigator = Navigator(mouse_controller)
+    # Percepção -> WorldState -> Árbitro -> Fila -> Trava -> Backend (ARQUITETURA §3)
+    store = WorldStore()
+    lock = InputLock()
+    queue = ActionQueue(lock)
+    locator = GameLocator()
+    arbiter = None  # criado abaixo; o clique da rota usa o lease da Hunt
+
+    async def route_click(screen_point):
+        """O cavebot gravou pixels da tela; o backend quer pixels da área cliente."""
+        window = locator.window()
+        if window is None or arbiter is None:
+            return
+        x, y = screen_point[0] - window.client.left, screen_point[1] - window.client.top
+        await queue.send(arbiter.lease_of("hunt"), Click(x, y))
+
+    navigator = Navigator(route_click)
 
     # Registro Dinâmico de Cooldowns (os defaults do ConfigManager já cobrem o combo Try-Hard)
-    orchestrator.sync_cooldowns(config_mgr.get_cooldowns())
+    queue.sync_cooldowns(config_mgr.get_cooldowns())
     logger.info("Cooldowns: " + ", ".join(f"{a}={s}s" for a, s in config_mgr.get_cooldowns().items()))
 
     # Preparação dos Eventos de Controle (o bot abre PAUSADO: dê play pelo console ou pela hotkey)
@@ -135,7 +182,16 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     kill_event = asyncio.Event()
 
     rt = BotRuntime(loop, pause_event, kill_event, config_mgr, navigator, SpriteLibrary())
+    rt.locator, rt.queue = locator, queue
     runtime_module.runtime = rt
+
+    heal_routine = PokemonHealRoutine(queue.press_current, queue.click_current, telemetry=rt.telemetry)
+    rt.heal_routine = heal_routine
+    ctx = BrainContext(queue=queue, store=store, telemetry=rt.telemetry, navigator=navigator,
+                       heal_routine=heal_routine, kill=rt.stop)
+    arbiter = Arbiter([SafetyBehavior(ctx), CompanionBehavior(), SurvivalBehavior(), HuntBehavior(ctx)],
+                      store, lock, queue, lambda: config_mgr.config, pause_event, kill_event, rt.telemetry)
+    rt.arbiter = arbiter
 
     # API do console + stream de logs no mesmo loop
     import uvicorn
@@ -155,27 +211,23 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     rt.config_changed()
     logger.info("Bot PAUSADO. Use o botão Play do console ou a hotkey de pause para começar.")
 
-    # 4. Fila de Comunicação Inter-Thread
-    state_queue = asyncio.Queue(maxsize=1)
-
-    # Setup Chat Analyzer (Kill Event); liga/desliga vem da aba Segurança e a região, da Calibração
+    # Sensor do chat (GM -> gm_alert no WorldState; a Segurança decide); liga/desliga na aba Segurança
     from otpbot.perception.chat import ChatAnalyzer, chat_monitor_thread
     chat_analyzer = ChatAnalyzer()
 
-    # 5. Loop Concorrente
-    perception_task = asyncio.create_task(perception_thread(vision_engine, state_queue, pause_event, kill_event, config_mgr, rt.telemetry))
-    heal_routine = PokemonHealRoutine(press_key_action, lambda point: click_action(mouse_controller, point), telemetry=rt.telemetry)
-    rt.heal_routine = heal_routine
-    decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry, heal_routine))
-    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.config))
-
-    calibration_task = asyncio.create_task(calibration_monitor(config_mgr, kill_event, rt.telemetry))
+    # Loop Concorrente
+    perception_task = asyncio.create_task(perception_thread(vision_engine, locator, store, pause_event, kill_event, config_mgr, rt.telemetry))
+    arbiter_task = asyncio.create_task(arbiter.run())
+    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.config,
+                                                        locator.capture, lambda gm: store.publish("gm_alert", gm)))
+    calibration_task = asyncio.create_task(calibration_monitor(config_mgr, locator, store, kill_event, rt.telemetry))
 
     # Aguarda o sinal de Kill ser processado e encerrar as threads
-    await asyncio.gather(perception_task, decision_task, chat_task, calibration_task)
+    await asyncio.gather(perception_task, arbiter_task, chat_task, calibration_task)
 
     navigator.stop_playback()
     navigator.stop_recording()
+    queue.release_all()
     keyboard.unhook_all()
     server.should_exit = True
     try:

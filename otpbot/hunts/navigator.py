@@ -6,20 +6,19 @@ import logging
 import asyncio
 import win32api
 import pyautogui
-from typing import List, Dict, Optional
-from otpbot.actuation.mouse import MouseController
+from typing import Awaitable, Callable, List, Dict, Optional
 from otpbot.app import paths
 
 logger = logging.getLogger("Navigator")
 
 class Navigator:
     """
-    Módulo Core de Navegação (Record & Playback) para Cavebot.
-    Grava cliques reais do usuário no minimapa e os reproduz com
-    movimentação humanizada usando o MouseController.
+    Módulo Core de Navegação (Record & Playback) para Cavebot. Sai na E09.
+    Grava cliques reais do usuário no minimapa (pixels da TELA) e os reproduz com `click(ponto_da_tela)`,
+    que passa pela fila de ações e pela trava de entrada (E03).
     """
-    def __init__(self, mouse_controller: MouseController, route_file: Optional[str] = None):
-        self.mouse_controller = mouse_controller
+    def __init__(self, click: Callable[[tuple], Awaitable], route_file: Optional[str] = None):
+        self.click = click
         self.route_file = route_file or str(paths.route_file())
         self.is_recording = False
         self.is_playing = False
@@ -133,8 +132,7 @@ class Navigator:
                 target_pos = (point["x"], point["y"])
                 logger.info(f"[Waypoint {i+1}/{len(route)}] Caminhando para -> {target_pos}")
                 
-                # Despacha o controle cinemático humanizado (blocking) para uma thread separada
-                await asyncio.to_thread(self.mouse_controller.click, target_pos, 'left')
+                await self.click(target_pos)
                 
         logger.info("Rotina de Cavebot finalizada.")
         

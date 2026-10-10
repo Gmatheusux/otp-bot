@@ -1,14 +1,13 @@
 """
 otpbot/perception/chat.py — Monitor de GM: OCR do chat só quando a imagem muda (MSE).
-A região lida é a "chat" do perfil de calibração da resolução do monitor (fonte única desde a E02).
+A região lida é a "chat" do perfil de calibração (fonte única desde a E02), escolhido pelo tamanho da área
+cliente do jogo (E03).
 """
 import asyncio
 import os
-import threading
 from typing import Callable, Dict, Optional, Tuple
 
 import cv2
-import mss
 import numpy as np
 import pytesseract
 import logging
@@ -19,7 +18,7 @@ logger = logging.getLogger("ChatAnalyzer")
 
 
 def chat_roi(calibration: Dict, width: int, height: int) -> Optional[Tuple[int, int, int, int]]:
-    """Região "chat" do perfil da resolução (x, y, w, h) em pixels do monitor; None se não calibrada."""
+    """Região "chat" do perfil (x, y, w, h) em pixels do frame (área cliente); None se não calibrada."""
     _, profile, scale = pick_profile(calibration, width, height)
     region = (profile or {}).get("regions", {}).get("chat")
     if not region:
@@ -33,40 +32,19 @@ class ChatAnalyzer:
         """
         Analisador de Chat isolado e de alta performance.
         Args:
-            roi: Região de Interesse (x, y, w, h) do chat; o monitor a atualiza pela calibração.
+            roi: Região de Interesse (x, y, w, h) do chat, em pixels da área cliente; o monitor a atualiza
+                 pela calibração.
         """
         self.roi = roi
-        self._local = threading.local()
         self.last_frame = None
         self.mse_threshold = 5.0  # Limiar de mudança de pixel para engatilhar OCR
 
         # Opcional: Caminho para o executável do tesseract (necessário no Windows)
         pytesseract.pytesseract.tesseract_cmd = tesseract_cmd
 
-    @property
-    def sct(self):
-        # mss guarda handles do Windows por thread; check_for_gm roda em threads do pool
-        if not hasattr(self._local, "sct"):
-            self._local.sct = mss.mss()
-        return self._local.sct
-
-    def monitor_size(self, monitor_index: int = 1) -> Tuple[int, int]:
-        monitor = self.sct.monitors[monitor_index]
-        return monitor["width"], monitor["height"]
-
-    def _capture_roi(self, monitor_index: int = 1) -> np.ndarray:
-        monitor = self.sct.monitors[monitor_index]
-        # Aplica offset da ROI na tela do mss
-        capture_box = {
-            "top": monitor["top"] + self.roi[1],
-            "left": monitor["left"] + self.roi[0],
-            "width": self.roi[2],
-            "height": self.roi[3]
-        }
-        sct_img = self.sct.grab(capture_box)
-        img = np.array(sct_img)
-        img = cv2.cvtColor(img, cv2.COLOR_BGRA2GRAY)  # Gray para facilitar o OCR e MSE
-        return img
+    def _crop_roi(self, frame: np.ndarray) -> np.ndarray:
+        x, y, w, h = self.roi
+        return cv2.cvtColor(frame[y:y + h, x:x + w], cv2.COLOR_BGR2GRAY)  # Gray para facilitar o OCR e MSE
 
     def _mse(self, imageA: np.ndarray, imageB: np.ndarray) -> float:
         # Erro quadrático médio entre duas imagens
@@ -74,12 +52,12 @@ class ChatAnalyzer:
         err /= float(imageA.shape[0] * imageA.shape[1])
         return err
 
-    def check_for_gm(self) -> bool:
+    def check_for_gm(self, frame: np.ndarray) -> bool:
         """
-        Checa a região do chat. Só engatilha o PyTesseract se a imagem mudou.
+        Checa a região do chat no print da área cliente. Só engatilha o PyTesseract se a imagem mudou.
         Retorna True se 'GM' ou 'GameMaster' for detectado.
         """
-        current_frame = self._capture_roi()
+        current_frame = self._crop_roi(frame)
 
         if self.last_frame is not None:
             err = self._mse(current_frame, self.last_frame)
@@ -107,11 +85,12 @@ class ChatAnalyzer:
 
 
 async def chat_monitor_thread(chat_analyzer: ChatAnalyzer, kill_event: asyncio.Event, pause_event: asyncio.Event,
-                              get_config: Optional[Callable[[], dict]] = None) -> None:
+                              get_config: Callable[[], dict], capture: Callable[[], tuple],
+                              publish: Callable[[bool], None]) -> None:
     """
-    Thread assíncrona dedicada ao monitoramento de chat (Kill Event).
-    Roda a uma taxa fixa muito menor (ex: 2-5 fps) para não onerar a CPU,
-    apenas lendo mudanças visuais.
+    Sensor do chat: roda a ~2 fps, lê só quando a imagem muda e PUBLICA `gm_alert` no WorldState.
+    Quem desliga o bot é a Segurança (brain/behaviors/safety.py), não o sensor.
+    `capture()` devolve (frame da área cliente, janela) ou (None, ...) sem o jogo.
     """
     tesseract_cmd = pytesseract.pytesseract.tesseract_cmd
     if not os.path.exists(tesseract_cmd):
@@ -125,12 +104,17 @@ async def chat_monitor_thread(chat_analyzer: ChatAnalyzer, kill_event: asyncio.E
         if kill_event.is_set():
             break
 
-        if get_config is not None:
-            config = get_config()
-            if not config.get("features", {}).get("safety", {}).get("gm_monitor", True):
+        config = get_config()
+        if not config.get("features", {}).get("safety", {}).get("gm_monitor", True):
+            await asyncio.sleep(1)
+            continue
+
+        try:
+            frame, _ = await asyncio.to_thread(capture)
+            if frame is None:
                 await asyncio.sleep(1)
                 continue
-            width, height = chat_analyzer.monitor_size()
+            height, width = frame.shape[:2]
             roi = chat_roi(config.get("calibration", {}), width, height)
             if roi is None:
                 if not warned_no_region:
@@ -143,13 +127,11 @@ async def chat_monitor_thread(chat_analyzer: ChatAnalyzer, kill_event: asyncio.E
                 chat_analyzer.roi = roi
                 chat_analyzer.last_frame = None  # tamanho mudou, MSE com o frame antigo não faz sentido
 
-        try:
             # Roda check_for_gm no threadpool para não bloquear o event loop caso caia no tesseract
-            gm_detected = await asyncio.to_thread(chat_analyzer.check_for_gm)
+            gm_detected = await asyncio.to_thread(chat_analyzer.check_for_gm, frame)
 
             if gm_detected:
-                logger.critical(">>> KILL EVENT ENGATILHADO PELO CHAT ANALYZER <<<")
-                kill_event.set()
+                publish(True)
                 break
 
             await asyncio.sleep(0.5)  # Limita a 2 FPS

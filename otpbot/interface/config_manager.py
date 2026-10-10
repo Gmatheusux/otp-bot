@@ -27,13 +27,15 @@ DEFAULT_CONFIG = {
     },
     "hotkeys": {"pause": "f8", "kill": "f9", "record": "f10", "play": "f11", "catch_key": "f4"},
     "engine": {"fps_target": 30, "offensive_mode": False, "model_path": "models/otp_yolo.pt", "confidence": 0.5},
+    # D11: "background" = PostMessage sem foco (aprovado no spike da E01); "foreground" = foca o jogo (plano B)
+    "input": {"backend": "background"},
     "pokemon_profile": {
         "auto_combo_key": "f1",
         "revive_key": "f2",
         "defensive_buff_key": "",  # sem padrão: o jogador escolhe no console
     },
     "features": {
-        # Lidos ao vivo pela decision_thread
+        # Lidos ao vivo pela Hunt (brain/behaviors/hunt.py)
         "combat": {
             "auto_combo": True,
             "kite_combo": True,

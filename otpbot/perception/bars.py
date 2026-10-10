@@ -74,11 +74,45 @@ _REGIONS_1920 = {
     "chat": {"x": 412, "y": 900, "w": 1096, "h": 70},
 }
 
+# Área CLIENTE da janela maximizada com barra de título [E01]: os sensores capturam só ela desde a E03.
+# Medido na E03 nas capturas do cliente (1920: print ao vivo; 3440: docs/e01/captura_3440_janela.png).
+# Os painéis da esquerda ficam nas mesmas coordenadas do cliente nas duas resoluções.
+_CLIENT_LEFT_PANEL = {
+    "player_hp": {"x": 84, "y": 58, "w": 102, "h": 17},
+    "pokemon_hp": {"x": 84, "y": 81, "w": 102, "h": 17},
+    "stance": {"x": 88, "y": 107, "w": 93, "h": 30, "slots": 3},
+    "team": {"x": 44, "y": 186, "w": 125, "h": 245, "slots": 5},
+}
+
+# O painel de baixo e a Battle mudam de altura conforme o jogador arruma a interface: confira na Calibração.
+_REGIONS_1920_CLIENT = {
+    **_CLIENT_LEFT_PANEL,
+    "game_area": {"x": 398, "y": 133, "w": 1124, "h": 588},
+    "exp_bar": {"x": 728, "y": 796, "w": 758, "h": 12},
+    "battle_list": {"x": 8, "y": 460, "w": 180, "h": 300},
+    "hotbar": {"x": 415, "y": 812, "w": 1095, "h": 36},
+    "minimap": {"x": 1536, "y": 34, "w": 372, "h": 256},
+    "coords": {"x": 1537, "y": 30, "w": 80, "h": 16},
+    "chat": {"x": 412, "y": 893, "w": 1096, "h": 75},
+}
+
+_REGIONS_3440_CLIENT = {
+    **_scaled(_REGIONS_3440_AT_2000, 3440 / 2000),
+    **_CLIENT_LEFT_PANEL,
+    "game_area": {"x": 552, "y": 4, "w": 2336, "h": 1224},
+    "exp_bar": {"x": 1249, "y": 1175, "w": 1235, "h": 12},
+    "battle_list": {"x": 8, "y": 455, "w": 180, "h": 280},
+    "hotbar": {"x": 939, "y": 1190, "w": 1565, "h": 38},
+    "chat": {"x": 413, "y": 1270, "w": 1376, "h": 60},
+}
+
 DEFAULT_CALIBRATION = {
     "summon_name": "Megaclefable",
     "profiles": {
         "3440x1440": {"width": 3440, "height": 1440, "regions": _scaled(_REGIONS_3440_AT_2000, 3440 / 2000)},
         "1920x1080": {"width": 1920, "height": 1080, "regions": _REGIONS_1920},
+        "3440x1369": {"width": 3440, "height": 1369, "regions": _REGIONS_3440_CLIENT},
+        "1920x1009": {"width": 1920, "height": 1009, "regions": _REGIONS_1920_CLIENT},
     },
 }
 
