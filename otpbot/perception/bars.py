@@ -92,7 +92,8 @@ _REGIONS_1920_CLIENT = {
     "battle_list": {"x": 8, "y": 460, "w": 180, "h": 300},
     "hotbar": {"x": 415, "y": 812, "w": 1095, "h": 36},
     "minimap": {"x": 1536, "y": 34, "w": 372, "h": 256},
-    "coords": {"x": 1537, "y": 30, "w": 80, "h": 16},
+    # Caixinha "x, y, z" do minimapa: dentro da borda dela [E08], 386 px antes da borda direita nas duas resoluções
+    "coords": {"x": 1920 - 386, "y": 31, "w": 88, "h": 18},
     "chat": {"x": 412, "y": 893, "w": 1096, "h": 75},
 }
 
@@ -103,6 +104,7 @@ _REGIONS_3440_CLIENT = {
     "exp_bar": {"x": 1249, "y": 1175, "w": 1235, "h": 12},
     "battle_list": {"x": 8, "y": 455, "w": 180, "h": 280},
     "hotbar": {"x": 939, "y": 1190, "w": 1565, "h": 38},
+    "coords": {"x": 3440 - 386, "y": 31, "w": 88, "h": 18},
     "chat": {"x": 413, "y": 1270, "w": 1376, "h": 60},
 }
 

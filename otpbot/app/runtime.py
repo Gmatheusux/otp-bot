@@ -33,6 +33,7 @@ class BotRuntime:
             "mobs_on_screen": 0,
             "is_boxed": False,
             "readings": {},  # barras lidas pela calibração (HP, EXP, time)
+            "coords": None,  # "x, y, z" da caixinha do minimapa (E08) ou None
             "heal_routine": "parado",
             "game_window": None,      # "1920x1009 em \\.\DISPLAY2" ou None
             "input_backend": None,

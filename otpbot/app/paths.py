@@ -60,6 +60,10 @@ def models_dir() -> Path:
     return data_dir() / "models"
 
 
+def hunts_dir() -> Path:
+    return data_dir() / "hunts"
+
+
 def logs_dir() -> Path:
     return data_dir() / "logs"
 

@@ -160,3 +160,8 @@
 - <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-10).
 - <span style="color: #CC5500;">**Resumo:**</span> Sensores (YOLO, barras, chat) na área cliente do jogo publicam no `WorldState`; o `Arbiter` (Segurança > Companion > Sobrevivência > Hunt) substituiu a `decision_thread`, com as regras portadas sem mudar; `ActionQueue` + `InputLock` + `InputBackend` (PostMessage sem foco por padrão) garantem que nenhuma tecla sai sem a trava (teste AST + cenários). Novas D21 (limpeza na interrupção) e D22 (jogo coberto = sem leitura). Perfis `1920x1009` e `3440x1369`. Testes 47 → 87. Detalhes no `GUIA.md` §7.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E04 (coleta de prints e ferramenta de rotular); em paralelo E06, E08, E15.
+## <span style="color: #CC5500;">**Handoff: E08 (Coordenadas, movimento e modelo de hunt)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-10).
+- <span style="color: #CC5500;">**Resumo:**</span> `perception/coords.py` lê `x, y, z` da caixinha do minimapa por dígitos-modelo (`defaults/coords/`, sem Tesseract) e publica `coords` no WorldState; `actuation/movement.py` anda pelo numérico (Num Lock off) confirmando cada passo pela coordenada e repetindo a tecla que o jogo engole no fim da animação; `hunts/hunt_model.py` com equipe com papéis (v1: dano e curador). Aceite ao vivo: A → B em 3 trechos, 26 passos sem leitura errada. Testes 87 → 126. Detalhes no `GUIA.md` §7.
+- <span style="color: #CC5500;">**Bloqueios:**</span> o bot como administrador não achou o `config.json` (conferir antes de rodar o bot de verdade).
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E09 (gravador de hunt e editor de rota); E04, E06 e E15 seguem em paralelo.

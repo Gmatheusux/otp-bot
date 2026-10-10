@@ -11,13 +11,13 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **Em paralelo: E04, E06, E08 e E15** (abertas em 2026-10-10; regras na §1.5) |
-| Última etapa concluída | E03: WorldState, árbitro, fila e trava de entrada (2026-10-10) |
-| Bloqueios | Material do jogo: só os vídeos chegaram; E04, E06 e E08 coletam prints ao vivo com o usuário (§1.5) |
+| **Etapa atual** | **Em paralelo: E04, E06 e E15** (abertas em 2026-10-10; regras na §1.5). E09 liberada (depende só da E08) |
+| Última etapa concluída | E08: coordenadas, movimento e modelo de hunt (2026-10-10) |
+| Bloqueios | Material do jogo: só os vídeos e as coordenadas chegaram; E04 e E06 coletam prints ao vivo com o usuário (§1.5) |
 | Ferramentas | Tesseract 5.4.0 instalado em `C:\Program Files\Tesseract-OCR` (2026-10-10, só inglês; português na E07). Teste com imagem gerada: lê `[GM] Tutor: …` certo. Falta validar com print real do chat |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
 | Material do jogo recebido | 🟡 2 vídeos de hunt manual em 3440 (ver §6) |
-| Última atualização | 2026-10-10, conversa E03 |
+| Última atualização | 2026-10-10, conversa E08 |
 
 ---
 
@@ -219,7 +219,7 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
 | E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | 🔵 |
 | E07 | Captura de shiny | Captura | G | E05, E06 📦 | ⬜ |
-| E08 | Coordenadas, movimento e modelo de hunt | Rota | G | E03 📦 | 🔵 |
+| E08 | Coordenadas, movimento e modelo de hunt | Rota | G | E03 📦 | ✅ |
 | E09 | Gravador de hunt e editor de rota | Rota | G | E08 | ⬜ |
 | E10 | Fases da hunt (lure, parada, combo, revive) e Companion | Rota | G | E06, E09 | ⬜ |
 | E11 | Cura e troca de pokémon validadas | Cura | M | E10 | ⬜ |
@@ -347,9 +347,11 @@ nome estranho.
 ### E08: Coordenadas, movimento e modelo de hunt 📦
 **Leitura obrigatória:** `docs/ESPECIFICACAO.md` §6; `docs/ARQUITETURA.md` §5.
 
-- [ ] `perception/coords.py`: `x, y, z` por dígitos-modelo.
-- [ ] `actuation/movement.py`: teclado numérico com Num Lock desligado, 8 direções, confirmado pela coordenada.
-- [ ] `hunts/hunt_model.py`: rota, alvos, bolas, **equipe com papéis**, regras; `hunts/*.json`.
+- [x] `perception/coords.py`: `x, y, z` por dígitos-modelo. *(Modelos 0–9 e vírgula em `defaults/coords/`; sensor
+  `coords` no WorldState ~10x/s, copiando só a caixinha.)*
+- [x] `actuation/movement.py`: teclado numérico com Num Lock desligado, 8 direções, confirmado pela coordenada.
+  *(`Mover.step` / `walk_to`, pela fila com lease; tecla engolida é repetida.)*
+- [x] `hunts/hunt_model.py`: rota, alvos, bolas, **equipe com papéis**, regras; `hunts/*.json`.
 
 **Aceite:** o bot anda de A a B por coordenadas numa área real; leitura de coordenada sem erro numa sequência de passos.
 
@@ -435,7 +437,7 @@ Necessário a partir da **E04**. Pode chegar em partes; registrar aqui o que che
 | 10–20 prints de hunt com lure cheio, em 1920×1080 **e** 3440×1440 | E04, E05 | ⬜ |
 | Shiny vivo ao lado de normal; corpo de shiny ao lado de corpo normal | E05, E07 | ⬜ |
 | Battle list cheia (com shiny e com o ícone de "longe do spawn") | E06 | ⬜ |
-| Minimapa com as coordenadas visíveis | E08 | ⬜ |
+| Minimapa com as coordenadas visíveis | E08 | ✅ E08: 3 prints da E01 já no git (`docs/e01/`: `433, 1501, 7`, `2690, 4170, 2`, `457, 1457, 7`) + o 8 coletado ao vivo (`1713, 4158, 7`). Modelos dos dígitos em `defaults/coords/`; prints ao vivo em `%APPDATA%\OTPBot\e08` |
 | Pokémon com debuff ativo e o mesmo sem debuff | E12 | ⬜ |
 | Hotbar e bag com poções, antídotos, revives e bolas | E07, E11 | ⬜ |
 | Mensagens do chat de captura com sucesso e com falha | E07 | ⬜ |
@@ -458,6 +460,52 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - Pendências e desvios:
 - Próxima etapa e o que o usuário precisa providenciar:
 ```
+
+### E08: Coordenadas, movimento e modelo de hunt (2026-10-10)
+- **Feito:** `perception/coords.py` (recorte da caixinha "x, y, z" do minimapa → pixels claros → caracteres separados
+  por coluna vazia → Jaccard contra os modelos de `defaults/coords/`, nota ≥ 0,92 **e** folga ≥ 0,08 sobre o 2º;
+  confiança = pior caractere; formato errado ou caractere desconhecido = `None`); sensor `coords_monitor` publicando
+  `coords` no WorldState ~10x/s (copia **só a caixinha**: `capture_client`/`GameLocator.capture` ganharam `region`) e
+  em `/api/status.coords`; região `coords` dos perfis `1920x1009` e `3440x1369` medida de novo (largura − 386, y 31,
+  88×18); `actuation/movement.py` (`Mover.step`: lê, aperta pela fila com o lease, espera leitura nova e confere o sqm
+  exato → ok / bloqueado / fora / sem_leitura / recusado; sem mudança em 0,4 s **aperta de novo**; `walk_to`: diagonal
+  enquanto faltar x e y, se bloquear tenta as 2 vizinhas, `perdido` com outro andar, destino > 30 sqm, desvio para
+  longe ou 3 rodadas sem avançar); `hunts/hunt_model.py` (rota com `walk`/`lure`/`kill`/`stairs` + espera, alvos,
+  bolas shiny/normal, **equipe com papéis** `damage`/`healer`/`lure`/`damage2` com a v1 aceitando só 1 dano e até 1
+  curador, regras com os padrões da especificação, JSON versionado em `%APPDATA%\OTPBot\hunts`, validação com
+  mensagens em português, gravação atômica); `paths.hunts_dir()`; ferramentas `tools/coord_glyphs.py` (lê e cria
+  modelos, só tela) e `tools/move_test.py` (read / step / walk pela pilha real, checa D20).
+- **Critérios de aceite:**
+  1. **Anda de A a B por coordenadas numa área real** (bot como administrador, PostMessage, jogo sem foco, print do
+     usuário): `837, 1584 → 848, 1600` (16 teclas, chegou), `848, 1600 → 852, 1596` (4, chegou),
+     `852, 1596 → 848, 1600` (6, chegou; 1 diagonal bloqueada e desvio por ↓). Antes, um passo em cada uma das 8
+     direções: 8/8 ok, voltando ao sqm inicial.
+  2. **Leitura sem erro numa sequência de passos:** nos 26 passos do aceite e nos 8 do teste de direções, toda
+     coordenada lida depois da tecla era exatamente o sqm esperado (nenhum "fora"). Só leitura: 68 + 83 + 70 leituras
+     seguidas sem falha. Os 3 prints reais da E01 leem certo com confiança 1,00 (`tests/test_coords.py`).
+  3. Testes: antes **87 passed**; depois **126 passed** (coordenadas 14, movimento 15, hunt 9, captura por região 1).
+- **Decisões novas / mudanças na arquitetura:** nenhuma D nova. `coords` entrou no WorldState (idade máx. 1 s).
+- **Fatos novos do jogo (registrados na especificação):** formato `x, y, z` (texto branco com contorno preto) numa
+  caixinha no canto do minimapa, **no mesmo lugar e com os mesmos pixels em 1920 e 3440**; 8 (↑) diminui o y e 6 (→)
+  aumenta o x; a coordenada muda 0,20–0,28 s depois da tecla; **o jogo ignora a tecla que chega logo depois de um passo**
+  (fim da animação): repetida 0,4 s depois, passa (passos de 0,55–0,66 s).
+- **Pendências e desvios:**
+  - **Bot como administrador não achou o `config.json`:** no terminal elevado do usuário o `ConfigManager` disse
+    "config.json não encontrado" em `C:\Users\Gabe\AppData\Roaming\OTPBot`, e o terminal da IA vê o arquivo no mesmo
+    caminho (o terminal da IA parece ver uma cópia isolada do %APPDATA%; os logs gravados pelo terminal elevado não
+    aparecem para ela). Para o teste não importou (calibração padrão). **Conferir antes de rodar o bot de verdade como
+    administrador** (E10/E15).
+  - Durante os testes, outro bot estava rodando e movia o personagem (o usuário pausou). Na mesma máquina havia um
+    `main.py --port 8044` de outra conversa. Ao testar movimento, conferir antes que o personagem está parado.
+  - Se a janela do jogo fica coberta (ex.: a ferramenta de print no meio do teste), o movimento para com `sem_leitura`
+    (D22). Tirar o print só depois.
+  - A diagonal `850, 1598 → 849, 1599` foi bloqueada no último trecho, embora o sqm tenha sido usado no trecho
+    anterior; causa não confirmada (pokémon/criatura no sqm, ou regra de diagonal do jogo).
+  - Tempos (`step_timeout` 1,5 s, `repress_s` 0,4 s) medidos só em 1920 e no chão; escada (mudar o `z`) e contorno de
+    obstáculo pelo minimapa não existem (`walk_to` só no mesmo andar). O `Mover` ainda não está ligado à Hunt (E10).
+  - Leitura de coordenada ao vivo testada só em 1920; o 3440 foi conferido pelo print da E01.
+- **Próxima etapa:** E09 (gravador de hunt e editor de rota), que depende só da E08; E04, E06 e E15 seguem em
+  paralelo. Para a E09 o usuário precisa do jogo aberto para gravar uma volta real da hunt, com o outro bot desligado.
 
 ### E03: WorldState, árbitro, fila e trava de entrada (2026-10-10)
 - **Feito:** `state/world_state.py` (leitura = valor + confiança + horário; vencida/incerta = `None`); sensores

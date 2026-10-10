@@ -10,6 +10,7 @@ Chaves publicadas hoje:
   detections  lista de detecções do YOLO, relativas à área cliente do jogo
   gm_alert    True quando o monitor do chat viu uma mensagem de GM
   window      `GameWindow` atual (None = jogo não encontrado)
+  coords      `Coord` (x, y, z) da caixinha do minimapa, ~10x/s (E08)
 """
 import asyncio
 import time
@@ -17,7 +18,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, Iterable, Mapping, Optional
 
 # Idade máxima padrão de cada leitura (s). Barras são lidas 2x/s; o YOLO a cada frame.
-MAX_AGE = {"bars": 3.0, "detections": 1.0, "window": 5.0}
+MAX_AGE = {"bars": 3.0, "detections": 1.0, "window": 5.0, "coords": 1.0}
 
 
 @dataclass(frozen=True)

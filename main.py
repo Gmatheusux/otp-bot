@@ -24,6 +24,7 @@ from otpbot.brain.heal_routine import PokemonHealRoutine
 from otpbot.perception.capture import GameLocator
 from otpbot.perception.sprites import SpriteLibrary
 from otpbot.perception.bars import read_regions
+from otpbot.perception.coords import coords_monitor
 from otpbot.platform.input_backend import check_integrity
 from otpbot.state.world_state import WorldStore
 
@@ -221,9 +222,12 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.config,
                                                         locator.capture, lambda gm: store.publish("gm_alert", gm)))
     calibration_task = asyncio.create_task(calibration_monitor(config_mgr, locator, store, kill_event, rt.telemetry))
+    # Sensor das coordenadas x, y, z (dígitos-modelo); o movimento confere cada passo por ele
+    coords_task = asyncio.create_task(coords_monitor(locator, store, lambda: config_mgr.config.get("calibration", {}),
+                                                     kill_event, rt.telemetry))
 
     # Aguarda o sinal de Kill ser processado e encerrar as threads
-    await asyncio.gather(perception_task, arbiter_task, chat_task, calibration_task)
+    await asyncio.gather(perception_task, arbiter_task, chat_task, calibration_task, coords_task)
 
     navigator.stop_playback()
     navigator.stop_recording()
