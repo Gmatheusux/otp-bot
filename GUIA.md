@@ -11,9 +11,10 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **E04: Coleta de prints e ferramenta de rotular** (frentes liberadas pela E03: E04, E06, E08, E15) |
+| **Etapa atual** | **Em paralelo: E04, E06, E08 e E15** (abertas em 2026-10-10; regras na §1.5) |
 | Última etapa concluída | E03: WorldState, árbitro, fila e trava de entrada (2026-10-10) |
-| Bloqueios | Material do jogo: só os vídeos chegaram (prints da §6 ainda pendentes) |
+| Bloqueios | Material do jogo: só os vídeos chegaram; E04, E06 e E08 coletam prints ao vivo com o usuário (§1.5) |
+| Ferramentas | Tesseract 5.4.0 instalado em `C:\Program Files\Tesseract-OCR` (2026-10-10, só inglês; português na E07). Teste com imagem gerada: lê `[GM] Tutor: …` certo. Falta validar com print real do chat |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
 | Material do jogo recebido | 🟡 2 vídeos de hunt manual em 3440 (ver §6) |
 | Última atualização | 2026-10-10, conversa E03 |
@@ -95,6 +96,23 @@ estado do projeto, rode o portão de qualidade da última etapa concluída e me 
   dizer que são.
 - Não marcar critério de aceite como cumprido sem evidência.
 - Etapa que não terminou fica 🟡 com a lista do que faltou; nunca ✅.
+
+### 1.5 Etapas em paralelo
+
+Depois da E03, algumas etapas rodam ao mesmo tempo, cada uma na sua worktree. Regras extras para elas:
+
+1. **Pré-requisito:** conferir as dependências da própria etapa na §4 (não "a etapa anterior da lista").
+2. **Material do jogo:** se o que a etapa precisa (§6) ainda não chegou, **coletar ao vivo com o usuário**, com o jogo
+   aberto, pela captura da janela do jogo (`perception/capture.GameLocator`), em vez de parar. Registrar na §6 o que foi
+   coletado e onde ficou (prints em `%APPDATA%\OTPBot`, nunca no git).
+3. **Um jogo para várias conversas:** só enviar tecla ou clique ao jogo com o ok do usuário **naquele momento**; outras
+   etapas podem estar lendo a tela ao mesmo tempo. O bot precisa rodar **como administrador** para a entrada chegar (D20).
+4. **Antes do merge:** trazer a `main` atualizada para a branch da etapa (no app, a ferramenta de sincronizar com a
+   branch base; ou `git merge origin/main`), rodar os testes de novo e só então fazer o merge na `main`.
+5. **Conflitos no guia:** manter as entradas das outras etapas. §0 "Etapa atual" lista as frentes que ainda estão em
+   andamento (tirar só a sua); §4 muda só a linha da sua etapa; §7 recebe a sua entrada no topo, sem apagar as outras.
+6. **Conflitos no código:** em arquivos compartilhados (`frontend/src/schema/features.js`, `config_manager.py`,
+   `main.py`, `api_server.py`), manter as mudanças das duas etapas; na dúvida, perguntar ao usuário.
 
 ---
 
@@ -197,18 +215,18 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 | E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ✅ |
 | E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ✅ |
 | E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ✅ |
-| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ⬜ **próxima** |
+| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | 🔵 |
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
-| E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | ⬜ |
+| E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | 🔵 |
 | E07 | Captura de shiny | Captura | G | E05, E06 📦 | ⬜ |
-| E08 | Coordenadas, movimento e modelo de hunt | Rota | G | E03 📦 | ⬜ |
+| E08 | Coordenadas, movimento e modelo de hunt | Rota | G | E03 📦 | 🔵 |
 | E09 | Gravador de hunt e editor de rota | Rota | G | E08 | ⬜ |
 | E10 | Fases da hunt (lure, parada, combo, revive) e Companion | Rota | G | E06, E09 | ⬜ |
 | E11 | Cura e troca de pokémon validadas | Cura | M | E10 | ⬜ |
 | E12 | Debuff e antídoto | Debuff | M | E10 📦 | ⬜ |
 | E13 | Gravador de sessões, analisador do jogo e aba Sessão | Aprendizado | M | E10 📦 | ⬜ |
 | E14 | Aprender comigo e otimizador | Aprendizado | G | E13 | ⬜ |
-| E15 | Build, instalador e atualização automática | Executável | M | E03 | ⬜ |
+| E15 | Build, instalador e atualização automática | Executável | M | E03 | 🔵 |
 | E16 | Launcher, auto-login e overlay | Executável | G | E15 | ⬜ |
 | E17 | Validação final da v1.0 | Entrega | M | todas | ⬜ |
 
