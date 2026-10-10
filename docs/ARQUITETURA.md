@@ -315,6 +315,22 @@ flowchart LR
 - **Classes do YOLO na v1.0:** `meu_pokemon`, `selvagem`, `selvagem_shiny`, `corpo`, `corpo_shiny`. Um modelo por
   espécie de hunt, ou um modelo geral com mais dados (decidir após o primeiro treino).
 
+### 6.1 Dataset da visão (E04, 2026-10-10)
+
+- `learning/dataset.py` em `%APPDATA%\OTPBot\dataset`: `pending/` (não revisados, fora do treino),
+  `images/{train,val}` + `labels/{train,val}` no formato do YOLO (`classe xc yc w h` normalizado; `.txt` vazio =
+  revisado sem nada), `data.yaml` (o que o ultralytics lê) e `manifest.json` (origem, perfil, tempo no vídeo,
+  descartados).
+- **Imagem = só o recorte da `game_area`** do perfil de calibração (decisão do usuário). A E05 roda o YOLO no mesmo
+  recorte e soma a origem da `game_area` para voltar a coordenadas da área cliente.
+- **Divisão por grupo:** mesma origem + bloco de **30 s** → treino ou validação por hash (20%). Frames vizinhos
+  ficam do mesmo lado e imagens novas não mudam a divisão das antigas.
+- Vários processos (console aberto + `tools/extrair_frames_video.py`) gravam o mesmo manifest: cada operação relê o
+  arquivo se ele mudou, e PNG fora do manifest é recuperado ao abrir.
+- Coleta só lê a tela: botão e captura automática (`AutoCollector`, pula prints quase iguais) pela
+  `GameLocator`; vídeos gravados da janela pelo `tools/extrair_frames_video.py` (3440 gravado em 2560 é ampliado
+  de volta). Rotas em `interface/dataset_api.py` (`/api/dataset/*`), aba **Visão/IA** (`VisionTab.jsx`).
+
 ---
 
 ## 7. Módulos
@@ -418,6 +434,9 @@ Os removidos da lista "Sai" acima, exceto o `navigator`, foram apagados na E02.
 por injeção (passa pela fila com o lease da Hunt); o `mouse.py` só é usado pelo backend de primeiro plano.
 Calibração: perfis novos **`1920x1009`** e **`3440x1369`** (área cliente da janela maximizada), ao lado dos de tela
 cheia; `platform/dpi.py` não foi criado (o DPI aware continua em `game_window.enable_dpi_awareness`).
+
+**Na E04 (2026-10-10):** novos `learning/dataset.py` (dataset + `AutoCollector`), `interface/dataset_api.py`
+(APIRouter incluído pelo `api_server`), `tools/extrair_frames_video.py` e a aba **Visão/IA** do console (§6.1).
 
 ---
 

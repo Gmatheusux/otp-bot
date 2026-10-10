@@ -94,6 +94,11 @@ Para quando **qualquer** destas condições acontecer [Q9, Q11, Q50]:
 | Usar a bola: **hotkey da bola com o cursor sobre o corpo** (a bola tem *auto use*) | [Q22] |
 | Confirmação: **mensagem no chat** (pt/en); o corpo some e, se capturou, o pokémon aparece | [Q23] |
 | Falhou: tenta de novo até **N vezes** *(config: 3)* | [Q23] |
+| Mensagem de falha no chat (pt): **"Desculpe, sua Poké Bola quebrou."** (falta a de sucesso e as em inglês) | [E04, vídeo de 1920] |
+| Corpo = selvagem morto **deitado no chão, sem nome e sem barra de vida** | [E04, usuário] |
+| **Caveira** em cima do nome de um selvagem = selvagem **mais forte** que os iniciais; continua sendo selvagem | [E04, usuário] |
+| Nome em cima do nome do personagem (ex.: "Absynthe" com ícone) = **guild** do jogador, não é pokémon; NPCs (ex.: "Mark") não são pokémon | [E04, usuário] |
+| **Regra de rótulo da visão:** caixa justa **só no sprite** (sem nome, caveira e barra de HP). Como no cliente do Tibia o nome e o HP muitas vezes ficam **por cima** do sprite, nesses casos a caixa pega o sprite inteiro mesmo levando o texto junto (nunca cortar o sprite). Sem caixa: personagem, guild, NPC, outros jogadores, efeitos | [E04, usuário] |
 | **Capturar antes de seguir a rota** (a rota fica segurada) | [Q24] |
 | Sem loot: o servidor coleta sozinho | [Q25] |
 | Bolas acabaram: **só notificar** | [Q28] |

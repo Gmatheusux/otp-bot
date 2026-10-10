@@ -95,6 +95,17 @@ Cada seção do console mostra um selo: **Funcionando** (o bot já executa) ou *
 Biblioteca de **sprites**: você tira um print pelo console (3s para trocar para o jogo), **arrasta um retângulo em volta do item** e escolhe a categoria (**Poções, Antídotos, Revive, Buffs, Pokébolas, Outros**) e a tecla. Também aceita enviar um PNG. O botão **Testar** procura o item num print novo e mostra a semelhança (ex: 96%).
 *Reconhecimento: funcionando. Uso automático dos itens: em breve.*
 
+### Visão/IA
+Dataset para treinar a visão (YOLO), em `%APPDATA%\OTPBot\dataset`. Guarda **só a área do jogo** de cada print.
+- **Coletar**: botão **Capturar agora** (3 s para trocar para o jogo) e **captura automática** a cada N segundos, que
+  pula prints repetidos. Só lê a tela; o jogo precisa estar visível.
+- **Vídeos** gravados da janela do jogo: `python tools/extrair_frames_video.py "<vídeo.mp4>" --a-cada 3` tira um
+  frame a cada 3 s para a fila (vídeo de 3440 gravado em 2560 é ampliado de volta).
+- **Rotular**: classes `meu_pokemon`, `selvagem`, `selvagem_shiny`, `corpo`, `corpo_shiny` (teclas 1–5). Arraste a
+  caixa, **→** salva e vai para o próximo, **C** cola as caixas do último print, lixeira descarta. Regra das caixas
+  na `docs/ESPECIFICACAO.md` §3.
+- Formato do YOLO com divisão treino/validação automática (`data.yaml` pronto para o treino da E05).
+
 ### Rota (cavebot)
 - **Gravar**: você clica no minimapa e o bot grava os pontos e o tempo entre eles.
 - **Tocar**: repete a rota em loop com movimento de mouse humanizado.
@@ -282,7 +293,7 @@ defaults/calibration/         Prints de referência padrão (copiados para os da
 frontend/                     Console (React + Vite + Tailwind)
   src/schema/features.js      Abas, seções e campos do console (gerados a partir daqui)
 tests/                        Testes (pytest)
-tools/                        Scripts avulsos (spike de entrada, análise de vídeos)
+tools/                        Scripts avulsos (spike de entrada, análise de vídeos, frames de vídeo → dataset)
 ```
 
 ---
@@ -337,7 +348,7 @@ As abas e os campos do console vêm de `frontend/src/schema/features.js`: para e
 
 ## Limitações conhecidas
 
-- **Sem modelo YOLO treinado.** A visão roda em modo *mock*: não vê selvagens nem corpos. Por isso combo, defesa, captura e "área limpa" da cura ainda não reagem ao jogo de verdade. Próximo passo: dataset com prints do Poke Alliance e treino.
+- **Sem modelo YOLO treinado.** A visão roda em modo *mock*: não vê selvagens nem corpos. Por isso combo, defesa, captura e "área limpa" da cura ainda não reagem ao jogo de verdade. O dataset já existe (aba Visão/IA, primeiro lote rotulado na E04); falta o treino (E05).
 - **Troca de pokémon pela Pokébar** clica no meio da linha do pokémon. Falta confirmar no jogo se um clique simples troca; se não, use a troca por tecla.
 - **Cavebot** usa posições da tela, não coordenadas do mapa (as coordenadas do minimapa já estão marcadas na calibração para isso).
 - A barra roxa de golpes ainda não está marcada no perfil 1920×1080.
