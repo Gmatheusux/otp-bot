@@ -155,3 +155,8 @@
 - <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-10).
 - <span style="color: #CC5500;">**Resumo:**</span> Código em `otpbot/` por camadas; dados em `%APPDATA%\OTPBot` com migração que só copia (`app/paths.py`); monitor de GM lê a região `chat` da calibração; `ai/` e módulos sem uso removidos; `navigator` fica até a E09. Testes 41 → 47. Detalhes no `GUIA.md` §7.
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E03 (WorldState, árbitro, fila e trava de entrada).
+
+## <span style="color: #CC5500;">**Handoff: E03 (WorldState, árbitro, fila e trava de entrada)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-10).
+- <span style="color: #CC5500;">**Resumo:**</span> Sensores (YOLO, barras, chat) na área cliente do jogo publicam no `WorldState`; o `Arbiter` (Segurança > Companion > Sobrevivência > Hunt) substituiu a `decision_thread`, com as regras portadas sem mudar; `ActionQueue` + `InputLock` + `InputBackend` (PostMessage sem foco por padrão) garantem que nenhuma tecla sai sem a trava (teste AST + cenários). Novas D21 (limpeza na interrupção) e D22 (jogo coberto = sem leitura). Perfis `1920x1009` e `3440x1369`. Testes 47 → 87. Detalhes no `GUIA.md` §7.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E04 (coleta de prints e ferramenta de rotular); em paralelo E06, E08, E15.

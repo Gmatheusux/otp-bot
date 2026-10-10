@@ -11,12 +11,12 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **E03: WorldState, árbitro, fila e trava de entrada** |
-| Última etapa concluída | E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza (2026-10-10) |
-| Bloqueios | Material do jogo pendente (necessário a partir da E04) |
+| **Etapa atual** | **E04: Coleta de prints e ferramenta de rotular** (frentes liberadas pela E03: E04, E06, E08, E15) |
+| Última etapa concluída | E03: WorldState, árbitro, fila e trava de entrada (2026-10-10) |
+| Bloqueios | Material do jogo: só os vídeos chegaram (prints da §6 ainda pendentes) |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
-| Material do jogo recebido | ❌ nenhum ainda (ver §6) |
-| Última atualização | 2026-10-10, conversa E02 |
+| Material do jogo recebido | 🟡 2 vídeos de hunt manual em 3440 (ver §6) |
+| Última atualização | 2026-10-10, conversa E03 |
 
 ---
 
@@ -104,7 +104,7 @@ estado do projeto, rode o portão de qualidade da última etapa concluída e me 
 |---|---|---|
 | **`GUIA.md`** (este) | Plano, estado, etapas e passagens | Toda conversa, no fim |
 | `docs/ESPECIFICACAO.md` | Regras do jogo e do bot (o "o quê") | Quando um fato ou regra muda |
-| `docs/ARQUITETURA.md` | Arquitetura, decisões D1–D19, riscos (o "como") | Quando a arquitetura muda |
+| `docs/ARQUITETURA.md` | Arquitetura, decisões D1–D22, riscos (o "como") | Quando a arquitetura muda |
 | `docs/PROMPTS.md` | Prompt de início de cada etapa | Quando uma etapa mudar de escopo |
 | `docs/analise-bot-externo/` | Comparativo com o bot externo + 11 relatórios de vídeo | Referência; não muda |
 | `ActiveContext.md` | Diário histórico das sessões | Toda conversa, uma entrada curta |
@@ -182,7 +182,7 @@ comportamento).
 | Cura com pokémon | ⚠️ implementada, não validada no jogo |
 | Rota | ⚠️ cliques gravados em pixel; será substituída |
 | Opções da rota, poção, medicine, alertas, Telegram, comida, guild | 🟡 só configuração no console |
-| DPI, captura por janela, entrada sem foco, Battle, coordenadas, debuff | ❌ (E01: janela, DPI, captura e spike de entrada feitos) |
+| DPI, captura por janela, entrada sem foco, Battle, coordenadas, debuff | ❌ (E01: janela, DPI, captura e spike de entrada feitos; E03: sensores na área cliente, entrada sem foco no bot) |
 
 ---
 
@@ -196,8 +196,8 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 | E00 | Análise e arquitetura | — | — | — | ✅ |
 | E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ✅ |
 | E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ✅ |
-| E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ⬜ **próxima** |
-| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ⬜ |
+| E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ✅ |
+| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ⬜ **próxima** |
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
 | E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | ⬜ |
 | E07 | Captura de shiny | Captura | G | E05, E06 📦 | ⬜ |
@@ -262,15 +262,17 @@ arquivo de dados dentro da pasta do código.
 **Objetivo:** a espinha dorsal da arquitetura nova.
 **Leitura obrigatória:** `docs/ARQUITETURA.md` §3 e §4; resultado do spike da E01.
 
-- [ ] `state/world_state.py`: snapshot por tick com valor, confiança e idade de cada leitura.
-- [ ] Sensores atuais (barras, chat, YOLO) publicando no WorldState.
-- [ ] `brain/arbiter.py` com a prioridade Segurança > Companion > Sobrevivência > Hunt e interrupção com limpeza.
-- [ ] `actuation/action_queue.py` (a partir do `action_orchestrator`), `input_lock.py` e `platform/input_backend.py`
+- [x] `state/world_state.py`: snapshot por tick com valor, confiança e idade de cada leitura.
+- [x] Sensores atuais (barras, chat, YOLO) publicando no WorldState.
+- [x] `brain/arbiter.py` com a prioridade Segurança > Companion > Sobrevivência > Hunt e interrupção com limpeza.
+  *(Companion e Sobrevivência no lugar, sem regra até a E10; limpeza conforme D21.)*
+- [x] `actuation/action_queue.py` (a partir do `action_orchestrator`), `input_lock.py` e `platform/input_backend.py`
   (segundo plano e primeiro plano, conforme D11). Segundo plano = o que o `tools/spike_input.py` provou (lParam com
   scan code, numérico sem o bit *extended*). Ao iniciar, checar se o bot tem a mesma integridade do jogo (D20).
-- [ ] Sensores capturando **só a área cliente** (`capture_client`) com regiões **relativas ao cliente**: a calibração
+- [x] Sensores capturando **só a área cliente** (`capture_client`) com regiões **relativas ao cliente**: a calibração
   atual está em coordenadas da tela em tela cheia e erra com o jogo maximizado com barra de título.
-- [ ] Portar as regras atuais (combo, defesa, postura, cura, captura) para comportamentos, sem mudar o que fazem.
+  *(Perfis `1920x1009` e `3440x1369`; jogo coberto = sem leitura, D22.)*
+- [x] Portar as regras atuais (combo, defesa, postura, cura, captura) para comportamentos, sem mudar o que fazem.
 
 **Aceite:** o comportamento atual continua igual; nenhuma ação de entrada acontece fora da trava (teste); a Segurança
 interrompe uma rotina longa (teste); testes passando.
@@ -421,7 +423,7 @@ Necessário a partir da **E04**. Pode chegar em partes; registrar aqui o que che
 | Mensagens do chat de captura com sucesso e com falha | E07 | ⬜ |
 | Analisador de hunt do jogo aberto | E13 | ⬜ |
 | Tabela de itens da Q26 (nome, como usa, tecla) | E07, E11 | ⬜ |
-| Vídeo de 5–10 min fazendo a hunt na mão | E04, E09, E14 | ⬜ |
+| Vídeo de 5–10 min fazendo a hunt na mão | E04, E09, E14 | 🟡 E03: 2 vídeos em 3440 (~5,9 min e ~2,6 min) em `C:\Users\Gabe\Videos\Captures` (fora do git). Gravados da janela: 2560×1020 = área cliente 3440×1369 reduzida ×0,744 (ampliar de volta antes de medir). Faltam vídeos em 1920 |
 
 ---
 
@@ -438,6 +440,58 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - Pendências e desvios:
 - Próxima etapa e o que o usuário precisa providenciar:
 ```
+
+### E03: WorldState, árbitro, fila e trava de entrada (2026-10-10)
+- **Feito:** `state/world_state.py` (leitura = valor + confiança + horário; vencida/incerta = `None`); sensores
+  publicando (`detections` + `window` do YOLO, `bars`, `gm_alert` do chat, que não desliga mais o bot sozinho);
+  `brain/arbiter.py` + `brain/behaviors/` (`safety`, `companion` e `survival` vazios até a E10, `hunt` com as regras da
+  antiga `decision_thread` copiadas na mesma ordem); `actuation/action_queue.py` (cooldowns do orchestrator + envio FIFO
+  que confere a trava antes de cada tecla/clique), `actuation/input_lock.py`, `platform/input_backend.py` (background =
+  PostMessage do spike, padrão; foreground = foca + SendInput + Bézier; `config.input.backend`; numérico com e sem Num
+  Lock, setas com bit *extended*, modificadores); checagem D20 ao achar a janela (log + `/api/status.integrity`);
+  `perception/capture.GameLocator` (só a área cliente; `None` com o jogo fechado, minimizado ou **coberto**, D22);
+  perfis `1920x1009` e `3440x1369` medidos; prints do console (sprites, calibração) também pela área cliente; cura,
+  navigator e botões de teste passando pela fila com lease; removidos `decision_thread.py` e `action_orchestrator.py`;
+  README e ARQUITETURA (§3.1, §7, D21, D22) atualizados.
+- **Critérios de aceite:**
+  1. Comportamento igual: os 11 testes da antiga `decision_thread` foram portados para `tests/test_hunt_behavior.py`
+     com **as mesmas expectativas** (teclas, ordem, ponto da postura (166, 118)) e agora rodam pela pilha inteira
+     (WorldState → árbitro → Hunt → fila → trava → backend gravador); `test_heal_routine.py` sem mudança. Leituras ao
+     vivo com o bot rodando (`python main.py --no-window`, pausado): perfil `1920x1009`, HP 100, pokémon 100, EXP
+     92,6, Pokébar [97,6, 99,2, 74,4, 99,2, 99,2], postura ofensiva, batendo com o print. **Nenhuma tecla foi enviada
+     ao jogo nesta conversa** (combo e captura seguem cegos sem modelo YOLO).
+  2. Nada fora da trava: `tests/test_input_guard.py`: varredura AST de `otpbot/` + `main.py` (só o
+     `input_backend.py` chama PostMessage/SendInput/keyboard.send/pydirectinput…) + cenários reais com todo envio com
+     dono válido + trava revogada = nada chega ao backend.
+  3. Segurança interrompe rotina longa: `test_arbiter.py::test_seguranca_interrompe_a_cura_no_meio_sem_limpeza`
+     (a cura chama o curador, o GM aparece, o bot desliga e a volta ao farm é barrada). Teste de mutação: tirar a
+     revogação da trava faz esse teste falhar. Também testado: outro comportamento interrompe e a cura volta ao farm
+     antes da troca de dono; pausa corta a entrada; teste do console passa pela trava.
+  4. Testes: antes **47 passed**; depois **87 passed**.
+- **Decisões novas / mudanças na arquitetura:** **D21** (limpeza na interrupção; a Segurança não permite, aprovada
+  pelo usuário); **D22** (jogo coberto = sem leitura; aplicada, **falta o ok do usuário**). Backend padrão =
+  background (D11).
+- **Fatos novos do jogo (registrados na especificação):** na área cliente os painéis da esquerda ficam nas mesmas
+  coordenadas nas duas resoluções; o painel de baixo e a Battle mudam de altura com o layout (área do jogo em y 142 →
+  133 e EXP 816 → 798 no mesmo 1920).
+- **Pendências e desvios:**
+  - **Rodar o bot como administrador:** sem isso o D20 avisa e toda entrada é bloqueada pelo Windows (o teste ao vivo
+    desta conversa rodou sem admin e o aviso apareceu: "bot média, jogo alta").
+  - Não testado no jogo: entrada pelo bot novo (só o spike da E01), teclas com modificador (`ctrl+f1`) sem foco, o
+    backend foreground, as outras teclas do numérico/F.
+  - Mudanças pequenas de comportamento, todas por causa da trava: pausar no meio da cura **corta** a rotina (antes ela
+    terminava); com o bot **pausado** o cavebot (F11) não clica mais (antes clicava); sem o jogo visível nada é lido
+    nem enviado (antes lia o monitor principal e mandava tecla para a janela em foco); barras com mais de 3 s não
+    valem.
+  - O perfil `3440x1369` foi medido no print da E01 e conferido em frames dos vídeos (reduzidos e ampliados); falta
+    conferir ao vivo em 3440. A Pokébar lê uns 4–6 pontos abaixo do número do jogo (82% → 75–79%), igual ao de
+    antes. O painel de baixo depende do layout: conferir na Calibração depois de mexer na interface.
+  - Na primeira análise eu disse que o perfil de tela cheia "errava" no 3440 (pokémon 61,9%); nos vídeos o pokémon
+    realmente estava baixo, então isso não era prova de erro.
+  - `platform/dpi.py` não foi criado (o DPI aware continua no `game_window`); `scratch/test_decision_thread.py`
+    continua quebrado e fora do pytest.
+- **Próxima etapa:** E04 (e, em paralelo, E06/E08/E15). Para a E04 o usuário precisa dos prints de hunt com lure
+  cheio nas duas resoluções (§6); os vídeos em 3440 já servem para extrair frames.
 
 ### E02: Nova estrutura de pastas, dados em %APPDATA% e limpeza (2026-10-10)
 - **Feito:** `core/` e `modules/` movidos para `otpbot/{app,interface,perception,brain,actuation,hunts}` com `git mv`

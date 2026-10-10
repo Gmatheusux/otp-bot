@@ -2,7 +2,8 @@
 
 **Versão 2**, revisada com as respostas da anamnese (2026-10-09). Regras do jogo em
 [`ESPECIFICACAO.md`](ESPECIFICACAO.md); etapas e estado do projeto em [`GUIA.md`](../GUIA.md).
-Decisões na **seção 10** (D1–D19 **aprovadas em 2026-10-09**; D11 depende do spike da etapa E01); riscos na **seção 9**.
+Decisões na **seção 10** (D1–D19 **aprovadas em 2026-10-09**; D11 confirmada na E01; D20–D22 das etapas E01 e E03);
+riscos na **seção 9**. Como o núcleo ficou depois da E03: **§3.1**.
 
 **O que mudou desde a versão 1:**
 - O jogo fica no **monitor secundário** enquanto você usa o primário → entrada sem foco (risco R1), captura por janela e
@@ -165,12 +166,41 @@ flowchart TB
 4. **Um dono por vez da entrada.** Toda tecla e todo clique passam pela fila e pela trava.
 5. **Config ao vivo**, como hoje.
 
+### 3.1 Como ficou na E03 (2026-10-10)
+
+```mermaid
+flowchart LR
+    loc["GameLocator<br/>área cliente; None se<br/>fechado, minimizado ou coberto"] --> yolo["YOLO"] & bars["Barras"] & chat["Chat"]
+    yolo -->|"detections + window"| ws[("WorldStore")]
+    bars -->|"bars"| ws
+    chat -->|"gm_alert"| ws
+    ws -->|"snapshot por frame"| arb["Arbiter"]
+    arb -->|"lease"| beh["Safety · Companion* ·<br/>Survival* · Hunt"]
+    beh -->|"KeyPress / Click / Wait"| q["ActionQueue<br/>FIFO + cooldowns"]
+    q -->|"confere o lease<br/>a cada envio"| lock["InputLock"]
+    q --> be["InputBackend<br/>background (padrão) / foreground"]
+```
+\* Companion e Sobrevivência existem no árbitro mas nunca pedem o controle até a E10.
+
+| Peça | Arquivo | Contrato |
+|---|---|---|
+| WorldState | `state/world_state.py` | `WorldStore.publish(nome, valor, confiança)`; `snapshot()` → `WorldState.get(nome, max_age, min_conf)`: vencida (barras > 3 s, detecções > 1 s), incerta ou com pouca confiança = `None` |
+| Comportamento | `brain/behaviors/base.py` | `priority` (0 Segurança … 3 Hunt), `wants(ws, cfg)`, `step(ws, cfg, lease)` (pode ser longo: roda numa task cancelável), `cleanup(lease)`, `allows_cleanup` |
+| Árbitro | `brain/arbiter.py` | tick a cada `detections`/`gm_alert` novo; o mais importante que quer age; interromper = cancelar a task de baixo e, se o novo permite (D21), deixar a limpeza sair **antes** de trocar a trava. Pausa/kill = `halt()` (revoga a trava, cancela, solta teclas). `run_exclusive` para os botões de teste do console |
+| Ação e fila | `actuation/action_queue.py` | `KeyPress(key)`, `Click(x, y)` em pixels **do cliente**, `Wait(s)`; `execute(lease, nome_cooldown, *ações)` e `send(lease, *ações)`; um envio por vez, na ordem; trava conferida antes de cada envio. `CURRENT_LEASE` (ContextVar) leva o lease da task para a rotina de cura |
+| Trava | `actuation/input_lock.py` | `grant(dono, prioridade)` → `Lease` (o de cima revoga o de baixo), `is_valid`, `release`, `revoke_all` |
+| Backend | `platform/input_backend.py` | `key(nome)`, `click(x, y)`, `release_all()`. `background` = PostMessage igual ao spike; `foreground` = foca, SendInput, Bézier, devolve o foco. `config.input.backend`. `check_integrity` (D20) ao achar a janela |
+
+Prova de que nada sai fora da trava: `tests/test_input_guard.py` (varredura do código: só o `input_backend.py` chama
+APIs de entrada do Windows; e cenários com backend gravador: todo envio tinha dono válido).
+
 ---
 
 ## 4. Entrada e o monitor secundário (risco R1)
 
-Você usa o monitor principal enquanto o jogo roda no secundário. `SendInput` (o que o bot usa hoje) manda a tecla para a
-**janela em foco**, então ela iria para o seu programa. A solução é um **backend de entrada** trocável:
+Você usa o monitor principal enquanto o jogo roda no secundário. `SendInput` (o que o bot usava até a E02) manda a tecla
+para a **janela em foco**, então ela iria para o seu programa. A solução é um **backend de entrada** trocável
+(implementado na E03, §3.1):
 
 ```mermaid
 flowchart LR
@@ -382,6 +412,13 @@ Sai: `navigator.py` (rota por pixel), `ai/`, `core/keyboard.py`, `core/mouse.py`
 
 Os removidos da lista "Sai" acima, exceto o `navigator`, foram apagados na E02.
 
+**Na E03 (2026-10-10):** `brain/decision_thread.py` → `brain/arbiter.py` + `brain/behaviors/` (as regras foram para
+`hunt.py` sem mudar); `actuation/action_orchestrator.py` → `actuation/action_queue.py`. Novos: `state/world_state.py`,
+`actuation/input_lock.py`, `platform/input_backend.py`, `perception/capture.GameLocator`. O `navigator` recebe o clique
+por injeção (passa pela fila com o lease da Hunt); o `mouse.py` só é usado pelo backend de primeiro plano.
+Calibração: perfis novos **`1920x1009`** e **`3440x1369`** (área cliente da janela maximizada), ao lado dos de tela
+cheia; `platform/dpi.py` não foi criado (o DPI aware continua em `game_window.enable_dpi_awareness`).
+
 ---
 
 ## 8. O executável
@@ -506,4 +543,6 @@ Aprovadas pelo usuário em 2026-10-09. Decisões novas entram como D20, D21… c
 | D17 | Treino em **processo separado** com limite de VRAM e prioridade baixa | ✅ Adotar | 🆕 |
 | D18 | **Equipe com papéis** desde a v1 (só dano e curador ativos) | ✅ Adotar | 🆕 preparação da v2 |
 | D19 | Assinatura de código | Depois; o SmartScreen avisa na 1ª instalação | — |
-| D20 | **Núcleo roda como administrador** (mesma integridade do jogo, que roda elevado), senão o Windows bloqueia a entrada (UIPI). Ao iniciar, checar a integridade do jogo e do bot e avisar no console se o bot estiver abaixo | ✅ E01, 2026-10-09 | 🆕 revisa a D10 |
+| D20 | **Núcleo roda como administrador** (mesma integridade do jogo, que roda elevado), senão o Windows bloqueia a entrada (UIPI). Ao iniciar, checar a integridade do jogo e do bot e avisar no console se o bot estiver abaixo | ✅ E01, 2026-10-09 (checagem feita na E03) | 🆕 revisa a D10 |
+| D21 | **Limpeza na interrupção:** quem interrompe declara se o interrompido pode limpar (`allows_cleanup`). Se pode, a limpeza (ex.: voltar ao pokémon de farm) sai com a trava do interrompido **antes** da troca de dono. A **Segurança não permite**: revoga a trava antes de cancelar e nada mais sai. Pausa também corta a entrada na hora | ✅ E03, 2026-10-10, aprovada pelo usuário | 🆕 |
+| D22 | **Jogo coberto = sem leitura:** a captura copia a tela, então se outra janela está sobre a área cliente (checado em 5 pontos) os sensores publicam `None` em vez de ler a janela de cima | 🟡 E03, 2026-10-10: aplicada como guarda de sensor (regra 1 da §3), **falta o ok do usuário** (achado ao vivo: uma janela sobre o jogo deu HP 35% falso) | 🆕 |

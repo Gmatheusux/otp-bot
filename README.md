@@ -31,29 +31,36 @@ O bot não lê a memória nem mexe no cliente do jogo. Ele **olha a tela** (capt
 
 ```mermaid
 flowchart LR
-    tela[(Tela do jogo)] --> percepcao[Percepção<br/>YOLO na GPU]
-    tela --> calibracao[Calibração<br/>barras por cor, 2x/s]
+    tela[(Janela do jogo<br/>área cliente)] --> percepcao[Percepção<br/>YOLO na GPU]
+    tela --> calibracao[Barras<br/>por cor, 2x/s]
     tela --> chat[Chat<br/>OCR quando muda]
-    percepcao --> decisao{Decisão}
-    calibracao --> decisao
-    chat -->|GM detectado| kill[Desliga o bot]
-    decisao --> teclado[Teclas]
-    decisao --> mouse[Cliques com curva Bézier]
+    percepcao & calibracao & chat --> ws[(WorldState)]
+    ws --> arb{Árbitro<br/>Segurança > Companion ><br/>Sobrevivência > Hunt}
+    arb --> fila[Fila de ações<br/>cooldowns] --> trava[Trava de entrada] --> backend[Backend<br/>PostMessage sem foco]
     console[Console<br/>React] <-->|HTTP + WebSocket<br/>127.0.0.1 + token| api[API FastAPI]
-    api <--> decisao
+    api <--> arb
 ```
 
 Tudo roda num único processo Python (`main.py`), com tarefas `asyncio` em paralelo:
 
 | Tarefa | O que faz |
 |---|---|
-| **Percepção** | Captura a tela e roda o YOLO (CUDA + FP16 quando há GPU) para achar seu pokémon, selvagens e corpos. |
-| **Calibração** | Lê 2x por segundo as barras fixas da interface: HP do jogador, HP do pokémon, EXP, Pokébar e a postura (mãos). |
-| **Decisão** | Combo, defesa quando cercado, postura automática, cura com pokémon e captura. Relê o `config.json` a cada frame: mudanças no console valem na hora. |
-| **Chat** | Lê a região do chat (a da Calibração) só quando ela muda (MSE) e desliga o bot se aparecer GM/Admin. |
+| **Percepção** | Captura só a área cliente da janela do jogo (em qualquer monitor) e roda o YOLO (CUDA + FP16 quando há GPU) para achar seu pokémon, selvagens e corpos. |
+| **Barras** | Lê 2x por segundo as barras fixas da interface: HP do jogador, HP do pokémon, EXP, Pokébar e a postura (mãos). |
+| **Chat** | Lê a região do chat (a da Calibração) só quando ela muda (MSE) e avisa se aparecer GM/Admin. |
+| **Árbitro** | A cada frame dá o controle ao comportamento mais importante: a **Segurança** desliga o bot com GM; a **Hunt** faz combo, defesa quando cercado, postura automática, cura com pokémon e captura. Relê o `config.json` a cada frame: mudanças no console valem na hora. |
 | **API + console** | Servidor local que entrega o console e recebe os comandos dele. |
 
-O bot **abre pausado**: nada é apertado até você dar Play no console ou apertar a hotkey de pausa.
+O bot **abre pausado**: nada é apertado até você dar Play no console ou apertar a hotkey de pausa. Toda tecla e
+todo clique passam pela fila e pela trava de entrada; pausar corta a entrada na hora.
+
+**Entrada sem foco:** por padrão as teclas e cliques vão direto para a janela do jogo (PostMessage), sem roubar o
+foco nem mexer no seu cursor; você pode usar o outro monitor enquanto o bot joga. Alternativa em `config.json`:
+`"input": {"backend": "foreground"}` (foca o jogo, aperta e devolve o foco). O jogo roda como administrador, então
+**o bot também precisa rodar como administrador** (D20); se não estiver, o log avisa ao achar o jogo.
+
+**O jogo precisa estar visível** (sem outra janela por cima): a captura copia a tela. Com o jogo coberto, os sensores
+ficam sem leitura e o bot não age.
 
 ---
 
@@ -246,20 +253,26 @@ otpbot/
     paths.py                  Pastas de dados (%APPDATA%\OTPBot) e migração dos arquivos antigos
     runtime.py                Estado compartilhado (pausa, kill, telemetria, hotkeys)
   platform/
-    game_window.py            Janela do jogo, monitor, foco, DPI e captura da área cliente
+    game_window.py            Janela do jogo, monitor, foco, DPI, "coberta?" e captura da área cliente
+    input_backend.py          ÚNICO lugar que manda tecla/clique: PostMessage sem foco (padrão) ou primeiro plano
   perception/
-    capture.py                Print do monitor
-    bars.py                   Perfis por resolução e leitura de barras/postura
-    chat.py                   OCR do chat (monitor de GM)
+    capture.py                GameLocator: print só da área cliente do jogo (sensores e console)
+    bars.py                   Perfis por resolução (tela cheia e área cliente) e leitura de barras/postura
+    chat.py                   OCR do chat (monitor de GM -> gm_alert)
     sprites.py                Sprites de itens e template matching
     spatial_analyzer.py       Distância dos selvagens ao seu pokémon ("cercado")
-    vision_engine.py          Captura + YOLO (CUDA/FP16)
+    vision_engine.py          YOLO (CUDA/FP16)
+  state/
+    world_state.py            WorldState: leituras com valor, confiança e idade
   brain/
-    decision_thread.py        Cérebro: combo, defesa, postura, cura, captura
+    arbiter.py                Árbitro: Segurança > Companion > Sobrevivência > Hunt, com interrupção
+    behaviors/                safety (GM -> desliga), companion e survival (E10), hunt (combo, defesa,
+                              postura, cura, captura)
     heal_routine.py           Rotina de cura com pokémon
   actuation/
-    action_orchestrator.py    Cooldowns por ação
-    mouse.py                  Mouse com curva Bézier, easing e ruído
+    action_queue.py           Fila de ações (FIFO) com cooldowns; confere a trava antes de cada envio
+    input_lock.py             Trava de entrada: um dono por vez
+    mouse.py                  Mouse com curva Bézier, easing e ruído (só no backend de primeiro plano)
   hunts/
     navigator.py              Cavebot por pixel (gravar e tocar rota); sai na E09
   interface/
@@ -328,6 +341,10 @@ As abas e os campos do console vêm de `frontend/src/schema/features.js`: para e
 - **Troca de pokémon pela Pokébar** clica no meio da linha do pokémon. Falta confirmar no jogo se um clique simples troca; se não, use a troca por tecla.
 - **Cavebot** usa posições da tela, não coordenadas do mapa (as coordenadas do minimapa já estão marcadas na calibração para isso).
 - A barra roxa de golpes ainda não está marcada no perfil 1920×1080.
+- **Teclas com modificador** (`ctrl+f1`, `shift+f1`) em segundo plano não foram testadas no jogo: o cliente pode ler
+  o Ctrl/Shift real do teclado. Se não funcionar, use teclas sem modificador ou o backend `foreground`.
+- O painel de baixo (EXP, hotbar, chat) e a Battle mudam de lugar quando você redimensiona a interface do jogo:
+  confira a *Leitura ao vivo* na Calibração depois de mexer no layout.
 
 ---
 
