@@ -1,5 +1,5 @@
 """
-core/heal_routine.py — Cura do jogador usando um pokémon de cura.
+otpbot/brain/heal_routine.py — Cura do jogador usando um pokémon de cura.
 
 Fluxo: HP do jogador abaixo do limite + nenhum selvagem por perto ->
 troca para o pokémon de cura -> rotação de cura -> revive no curador (zera a recarga
@@ -11,7 +11,7 @@ import logging
 import time
 from typing import Awaitable, Callable, Dict, Optional, Tuple
 
-from modules.screen_calibration import region_point
+from otpbot.perception.bars import region_point
 
 logger = logging.getLogger("HealRoutine")
 

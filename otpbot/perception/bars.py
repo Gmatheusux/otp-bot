@@ -1,5 +1,5 @@
 """
-modules/screen_calibration.py — Regiões fixas da interface do jogo e leitura das barras por cor.
+otpbot/perception/bars.py — Regiões fixas da interface do jogo e leitura das barras por cor.
 
 A interface do cliente NÃO cresce com o monitor: os painéis têm o mesmo tamanho em pixels em
 qualquer resolução; o que muda é a área do jogo e a posição do que fica à direita/embaixo.

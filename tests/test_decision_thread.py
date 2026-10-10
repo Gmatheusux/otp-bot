@@ -5,9 +5,9 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core import decision_thread as dt
-from core.action_orchestrator import UtilityOrchestrator
-from core.config_manager import ConfigManager
+from otpbot.brain import decision_thread as dt
+from otpbot.actuation.action_orchestrator import UtilityOrchestrator
+from otpbot.interface.config_manager import ConfigManager
 
 
 class FakeNavigator:

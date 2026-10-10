@@ -15,14 +15,17 @@ from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from core import runtime as runtime_module
-from modules import screen_calibration, sprite_library
+from otpbot.app import paths
+from otpbot.app import runtime as runtime_module
+from otpbot.perception import bars as screen_calibration
+from otpbot.perception import sprites as sprite_library
+from otpbot.perception.capture import capture_screen
 
 logger = logging.getLogger("APIServer")
 
 # Token gerado a cada execução: só quem abriu o console por esta sessão consegue falar com a API.
 SESSION_TOKEN = secrets.token_urlsafe(24)
-FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+FRONTEND_DIST = paths.FRONTEND_DIST
 
 # Sem CORS: o console é servido pela própria API (mesma origem) ou pelo proxy do Vite em dev.
 app = FastAPI(title="OTP Bot - Console API", version="1.1.0", docs_url=None, redoc_url=None, openapi_url=None)
@@ -211,7 +214,7 @@ async def take_screenshot(req: ScreenshotRequest):
     """Espera alguns segundos (para o jogador trocar para o jogo) e devolve o print em PNG."""
     global _last_screenshot
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_screen)
     _last_screenshot = frame
     png = await asyncio.to_thread(sprite_library.encode_png, frame)
     return Response(content=png, media_type="image/png")
@@ -279,7 +282,7 @@ async def delete_sprite(sprite_id: str, sprites=Depends(get_sprites)):
 async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(get_sprites)):
     """Tira um print novo e diz se o bot encontra o item nele."""
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_screen)
     try:
         return await asyncio.to_thread(sprites.match, sprite_id, frame)
     except KeyError:
@@ -288,14 +291,11 @@ async def test_sprite(sprite_id: str, req: ScreenshotRequest, sprites=Depends(ge
 
 # ---------------------------------------------------------------- Calibração da tela
 
-CALIBRATION_DIR = Path("assets/calibration")
-
-
 def reference_path(profile_key: str) -> Path:
     # A chave vem da API: só aceita o formato "1920x1080" para não virar caminho arbitrário
     if not profile_key.replace("x", "", 1).isdigit():
         raise HTTPException(status_code=400, detail="Perfil inválido.")
-    return CALIBRATION_DIR / f"reference_{profile_key}.png"
+    return paths.calibration_dir() / f"reference_{profile_key}.png"
 
 
 class CalibrationTest(BaseModel):
@@ -319,10 +319,10 @@ async def set_calibration_reference(req: ScreenshotRequest, rt=Depends(get_runti
     Resolução nova vira um perfil novo, copiado do mais próximo e escalado pela largura.
     """
     await asyncio.sleep(req.delay_s)
-    frame = await asyncio.to_thread(sprite_library.capture_screen)
+    frame = await asyncio.to_thread(capture_screen)
     height, width = frame.shape[:2]
     key = f"{width}x{height}"
-    CALIBRATION_DIR.mkdir(parents=True, exist_ok=True)
+    paths.calibration_dir().mkdir(parents=True, exist_ok=True)
     reference_path(key).write_bytes(sprite_library.encode_png(frame))
 
     config = rt.config_manager.config
@@ -350,7 +350,7 @@ async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
         frame = sprite_library.decode_image(path.read_bytes())
     else:
         await asyncio.sleep(req.delay_s)
-        frame = await asyncio.to_thread(sprite_library.capture_screen)
+        frame = await asyncio.to_thread(capture_screen)
     readings = await asyncio.to_thread(screen_calibration.read_regions, frame, calibration, req.profile)
     return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 

@@ -5,7 +5,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from modules.screen_calibration import active_slot, bar_fill, migrate_calibration, pick_profile, read_regions
+from otpbot.perception.bars import active_slot, bar_fill, migrate_calibration, pick_profile, read_regions
 
 GREEN = (0, 200, 0)    # BGR
 YELLOW = (0, 190, 240)

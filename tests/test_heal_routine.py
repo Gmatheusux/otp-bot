@@ -4,8 +4,8 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from core.heal_routine import ABORTED, DONE, INVALID, PokemonHealRoutine
-from modules.screen_calibration import DEFAULT_CALIBRATION
+from otpbot.brain.heal_routine import ABORTED, DONE, INVALID, PokemonHealRoutine
+from otpbot.perception.bars import DEFAULT_CALIBRATION
 
 SCREEN = (1920, 1080)
 

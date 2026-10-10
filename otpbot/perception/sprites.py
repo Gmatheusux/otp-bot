@@ -1,5 +1,5 @@
 """
-modules/sprite_library.py — Biblioteca de sprites de itens escolhidos pelo jogador no console.
+otpbot/perception/sprites.py — Biblioteca de sprites de itens escolhidos pelo jogador no console.
 Cada sprite é um recorte PNG da tela; o bot localiza o item comparando o recorte com o frame
 (Template Matching, TM_CCOEFF_NORMED).
 """
@@ -12,8 +12,9 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 import cv2
-import mss
 import numpy as np
+
+from otpbot.app import paths
 
 logger = logging.getLogger("SpriteLibrary")
 
@@ -21,13 +22,6 @@ CATEGORIES = ("potion", "antidote", "revive", "buff", "ball", "other")
 DEFAULT_THRESHOLD = 0.85
 MIN_SIDE = 6
 MAX_SIDE = 256
-
-
-def capture_screen(monitor_index: int = 1) -> np.ndarray:
-    """Print do monitor em BGR. Instância nova de mss por chamada: pode rodar em qualquer thread."""
-    with mss.mss() as sct:
-        img = np.array(sct.grab(sct.monitors[monitor_index]))
-    return cv2.cvtColor(img, cv2.COLOR_BGRA2BGR)
 
 
 def encode_png(img: np.ndarray) -> bytes:
@@ -45,10 +39,10 @@ def decode_image(data: bytes) -> np.ndarray:
 
 
 class SpriteLibrary:
-    def __init__(self, root: str = "assets/sprites"):
+    def __init__(self, root: Optional[str] = None):
         # cv2.imread/imwrite não aceitam acentos no caminho no Windows ("automação");
         # por isso todo I/O de imagem passa por bytes (imencode/imdecode + Path).
-        self.root = Path(root)
+        self.root = Path(root) if root else paths.sprites_dir()
         self.root.mkdir(parents=True, exist_ok=True)
         self.index_path = self.root / "sprites.json"
         self._lock = threading.Lock()

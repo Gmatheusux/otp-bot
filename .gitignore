@@ -12,8 +12,10 @@ models/*.pt
 models/*.engine
 models/*.onnx
 
-# Dados locais do bot
+# Dados do bot: ficam em %APPDATA%\OTPBot (E02). Estes são os lugares antigos, ao lado do código.
+config.json
 route.json
+assets/
 
 # Worktrees do fluxo Zero Trust
 .worktrees/

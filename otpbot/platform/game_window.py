@@ -148,7 +148,7 @@ def save_png(path: str, image: np.ndarray) -> None:
 
 def pick_window_profile(calibration: Dict, window: GameWindow):
     """Perfil de calibração escolhido pelo tamanho da área cliente (e não do monitor)."""
-    from modules.screen_calibration import pick_profile
+    from otpbot.perception.bars import pick_profile
     w, h = window.size
     return pick_profile(calibration, w, h)
 

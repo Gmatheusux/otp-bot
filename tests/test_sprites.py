@@ -6,7 +6,7 @@ import pytest
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from modules.sprite_library import SpriteLibrary
+from otpbot.perception.sprites import SpriteLibrary
 
 
 def make_sprite(seed=1, size=24):

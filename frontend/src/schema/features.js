@@ -215,13 +215,10 @@ export const TABS = [
         title: 'Monitor de GM',
         status: 'ativo',
         description:
-          'Lê a última linha do chat; se aparecer GM, Admin ou Tutor, desliga o bot. Precisa do Tesseract instalado.',
+          'Lê o chat; se aparecer GM, Admin ou Tutor, desliga o bot. Precisa do Tesseract instalado. A área lida é ' +
+          'a região "Chat" da aba Calibração.',
         fields: [
           { type: 'toggle', path: 'features.safety.gm_monitor', label: 'Vigiar o chat' },
-          {
-            type: 'roi', path: 'features.safety.chat_roi', label: 'Área da última linha do chat',
-            hint: 'Posição em pixels na tela (X, Y do canto superior esquerdo, largura e altura).',
-          },
         ],
       },
       {

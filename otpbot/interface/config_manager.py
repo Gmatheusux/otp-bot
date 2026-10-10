@@ -3,7 +3,8 @@ import json
 import os
 import logging
 
-from modules.screen_calibration import DEFAULT_CALIBRATION, migrate_calibration
+from otpbot.app import paths
+from otpbot.perception.bars import DEFAULT_CALIBRATION, migrate_calibration
 
 logger = logging.getLogger("ConfigManager")
 
@@ -45,7 +46,8 @@ DEFAULT_CONFIG = {
         # Desligado por padrão: o jogador liga depois de conferir a leitura da postura na Calibração
         "stance": {"auto": False, "normal": "offensive", "lure": "defensive", "combo": "offensive"},
         "catch": {"enabled": True},
-        "safety": {"gm_monitor": True, "chat_roi": [10, 600, 400, 30]},
+        # A região do chat é a "chat" do perfil de calibração (E02: o antigo safety.chat_roi saiu)
+        "safety": {"gm_monitor": True},
         # Planejados: a UI já salva, o bot ainda não executa
         "target": {"auto_target": False, "range": 7, "ignore": [], "shiny_priority": False, "shiny_words": ["shiny"]},
         "heal": {
@@ -81,10 +83,18 @@ DEFAULT_CONFIG = {
 }
 
 
+def migrate_config(config: dict) -> dict:
+    """Chaves que saíram: safety.chat_roi (a região do chat agora é só a da calibração)."""
+    safety = config.get("features", {}).get("safety")
+    if isinstance(safety, dict):
+        safety.pop("chat_roi", None)
+    return config
+
+
 class ConfigManager:
     """Gerenciador de configurações para carregar parâmetros dinâmicos via config.json"""
-    def __init__(self, config_path="config.json"):
-        self.config_path = config_path
+    def __init__(self, config_path=None):
+        self.config_path = str(config_path or paths.config_file())
         self.config = self._load_config()
 
     def _load_config(self) -> dict:
@@ -98,7 +108,7 @@ class ConfigManager:
             # Antes da mescla: senão os perfis padrão entram e a calibração antiga não é convertida
             if "calibration" in loaded:
                 loaded["calibration"] = migrate_calibration(loaded["calibration"])
-            return _deep_merge(self._default_config(), loaded)
+            return _deep_merge(self._default_config(), migrate_config(loaded))
         except Exception as e:
             logger.error(f"Erro ao carregar {self.config_path}: {e}")
             return self._default_config()
@@ -141,6 +151,6 @@ class ConfigManager:
 
     def update_full_config(self, new_config: dict):
         """Sobrescreve a configuração inteira e salva no disco dinamicamente."""
-        self.config = _deep_merge(self._default_config(), new_config)
+        self.config = _deep_merge(self._default_config(), migrate_config(new_config))
         logger.info("Configuração global atualizada via API Dashboard.")
         self._save_config()

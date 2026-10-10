@@ -1,25 +1,37 @@
 import argparse
 import asyncio
 import logging
+import logging.handlers
 import os
 import threading
 import time
 import keyboard
 
-from core import runtime as runtime_module
-from core.runtime import BotRuntime
-from core.action_orchestrator import UtilityOrchestrator
-from core.mouse_controller import MouseController
-from core.config_manager import ConfigManager
-from core.navigator import Navigator
-from core.decision_thread import decision_thread, press_key_action, click_action
-from core.heal_routine import PokemonHealRoutine
-from modules.sprite_library import SpriteLibrary, capture_screen
-from modules.screen_calibration import read_regions
+from otpbot.app import paths
+from otpbot.app import runtime as runtime_module
+from otpbot.app.runtime import BotRuntime
+from otpbot.actuation.action_orchestrator import UtilityOrchestrator
+from otpbot.actuation.mouse import MouseController
+from otpbot.interface.config_manager import ConfigManager
+from otpbot.hunts.navigator import Navigator
+from otpbot.brain.decision_thread import decision_thread, press_key_action, click_action
+from otpbot.brain.heal_routine import PokemonHealRoutine
+from otpbot.perception.capture import capture_screen
+from otpbot.perception.sprites import SpriteLibrary
+from otpbot.perception.bars import read_regions
 
 # Configuração de Logs
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 logger = logging.getLogger("MainOrchestrator")
+
+
+def setup_file_log() -> None:
+    """Log também em %APPDATA%\\OTPBot\\logs (5 arquivos de 2 MB)."""
+    handler = logging.handlers.RotatingFileHandler(paths.logs_dir() / "otpbot.log", maxBytes=2_000_000,
+                                                   backupCount=4, encoding="utf-8")
+    handler.setFormatter(logging.Formatter(LOG_FORMAT))
+    logging.getLogger().addHandler(handler)
 
 API_HOST = "127.0.0.1"  # Só a própria máquina acessa o console
 
@@ -30,13 +42,13 @@ class MockVision:
 
 def load_vision_engine(engine_cfg: dict, telemetry: dict):
     """Carrega o YOLO na GPU quando possível; sem modelo, sobe em modo mock para o console funcionar."""
-    model_path = engine_cfg.get("model_path", "models/otp_yolo.pt")
+    model_path = str(paths.resolve_data_path(engine_cfg.get("model_path", "models/otp_yolo.pt")))
     if not os.path.exists(model_path):
         logger.warning(f"Modelo YOLO não encontrado em '{model_path}'. Visão em modo MOCK (nenhuma detecção).")
         telemetry.update(device="mock", model=None)
         return MockVision()
     try:
-        from modules.vision_engine import VisionEngine
+        from otpbot.perception.vision_engine import VisionEngine
         vision_engine = VisionEngine(model_path)
     except Exception as e:
         logger.warning(f"Aviso: Não foi possível carregar o modelo YOLO, usando mock. Erro: {e}")
@@ -127,7 +139,7 @@ async def run_bot(port: int, ready: threading.Event) -> None:
 
     # API do console + stream de logs no mesmo loop
     import uvicorn
-    from core.api_server import app, WebSocketLogHandler
+    from otpbot.interface.api_server import app, WebSocketLogHandler
     logging.getLogger().addHandler(WebSocketLogHandler(loop))
     server = uvicorn.Server(uvicorn.Config(app, host=API_HOST, port=port, log_level="warning", timeout_graceful_shutdown=1))
     api_task = asyncio.create_task(server.serve())
@@ -146,16 +158,16 @@ async def run_bot(port: int, ready: threading.Event) -> None:
     # 4. Fila de Comunicação Inter-Thread
     state_queue = asyncio.Queue(maxsize=1)
 
-    # Setup Chat Analyzer (Kill Event); ROI e liga/desliga vêm da aba Segurança
-    from modules.chat_analyzer import ChatAnalyzer, chat_monitor_thread
-    chat_analyzer = ChatAnalyzer(roi=tuple(config_mgr.get_features()["safety"]["chat_roi"]))
+    # Setup Chat Analyzer (Kill Event); liga/desliga vem da aba Segurança e a região, da Calibração
+    from otpbot.perception.chat import ChatAnalyzer, chat_monitor_thread
+    chat_analyzer = ChatAnalyzer()
 
     # 5. Loop Concorrente
     perception_task = asyncio.create_task(perception_thread(vision_engine, state_queue, pause_event, kill_event, config_mgr, rt.telemetry))
     heal_routine = PokemonHealRoutine(press_key_action, lambda point: click_action(mouse_controller, point), telemetry=rt.telemetry)
     rt.heal_routine = heal_routine
     decision_task = asyncio.create_task(decision_thread(orchestrator, navigator, mouse_controller, lambda: config_mgr.config, state_queue, pause_event, kill_event, rt.telemetry, heal_routine))
-    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.get_features().get("safety", {})))
+    chat_task = asyncio.create_task(chat_monitor_thread(chat_analyzer, kill_event, pause_event, lambda: config_mgr.config))
 
     calibration_task = asyncio.create_task(calibration_monitor(config_mgr, kill_event, rt.telemetry))
 
@@ -178,6 +190,10 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000, help="Porta local da API/console (padrão 8000)")
     parser.add_argument("--no-window", action="store_true", help="Não abre a janela; use o link impresso no navegador")
     args = parser.parse_args()
+
+    paths.prepare()
+    setup_file_log()
+    logger.info(f"Dados em {paths.data_dir()}")
 
     try:
         import webview
@@ -203,7 +219,7 @@ def main() -> None:
     thread.start()
     ready.wait(timeout=30)
 
-    from core.api_server import SESSION_TOKEN
+    from otpbot.interface.api_server import SESSION_TOKEN
     url = f"http://{API_HOST}:{args.port}/?token={SESSION_TOKEN}"
 
     try:

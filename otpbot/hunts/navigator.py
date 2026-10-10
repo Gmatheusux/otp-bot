@@ -7,7 +7,8 @@ import asyncio
 import win32api
 import pyautogui
 from typing import List, Dict, Optional
-from core.mouse_controller import MouseController
+from otpbot.actuation.mouse import MouseController
+from otpbot.app import paths
 
 logger = logging.getLogger("Navigator")
 
@@ -17,9 +18,9 @@ class Navigator:
     Grava cliques reais do usuário no minimapa e os reproduz com
     movimentação humanizada usando o MouseController.
     """
-    def __init__(self, mouse_controller: MouseController, route_file: str = "route.json"):
+    def __init__(self, mouse_controller: MouseController, route_file: Optional[str] = None):
         self.mouse_controller = mouse_controller
-        self.route_file = route_file
+        self.route_file = route_file or str(paths.route_file())
         self.is_recording = False
         self.is_playing = False
         self.route_points: List[Dict[str, float]] = []

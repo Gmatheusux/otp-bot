@@ -1,11 +1,11 @@
 import asyncio
 import logging
 from typing import Callable
-from core.action_orchestrator import UtilityOrchestrator
-from core.navigator import Navigator
-from core.mouse_controller import MouseController
-from modules.spatial_analyzer import SpatialAnalyzer
-from modules.screen_calibration import STANCES, region_point
+from otpbot.actuation.action_orchestrator import UtilityOrchestrator
+from otpbot.hunts.navigator import Navigator
+from otpbot.actuation.mouse import MouseController
+from otpbot.perception.spatial_analyzer import SpatialAnalyzer
+from otpbot.perception.bars import STANCES, region_point
 import keyboard
 import pyautogui
 

@@ -1,1 +1,1 @@
-"""OTP Bot (OT Pokémon). Pacote novo da arquitetura v2; os módulos atuais migram para cá na E02."""
+"""OTP Bot (OT Pokémon). Camadas: app, platform, perception, brain, actuation, hunts, interface."""

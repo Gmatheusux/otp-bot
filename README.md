@@ -50,7 +50,7 @@ Tudo roda num único processo Python (`main.py`), com tarefas `asyncio` em paral
 | **Percepção** | Captura a tela e roda o YOLO (CUDA + FP16 quando há GPU) para achar seu pokémon, selvagens e corpos. |
 | **Calibração** | Lê 2x por segundo as barras fixas da interface: HP do jogador, HP do pokémon, EXP, Pokébar e a postura (mãos). |
 | **Decisão** | Combo, defesa quando cercado, postura automática, cura com pokémon e captura. Relê o `config.json` a cada frame: mudanças no console valem na hora. |
-| **Chat** | Lê a última linha do chat só quando ela muda (MSE) e desliga o bot se aparecer GM/Admin. |
+| **Chat** | Lê a região do chat (a da Calibração) só quando ela muda (MSE) e desliga o bot se aparecer GM/Admin. |
 | **API + console** | Servidor local que entrega o console e recebe os comandos dele. |
 
 O bot **abre pausado**: nada é apertado até você dar Play no console ou apertar a hotkey de pausa.
@@ -100,7 +100,7 @@ Depois que um selvagem morre, aperta a tecla da pokébola e clica no corpo (só 
 ### Segurança
 | Função | Status |
 |---|---|
-| Monitor de GM no chat (precisa do Tesseract) | Funcionando |
+| Monitor de GM no chat (precisa do Tesseract; lê a região **Chat** da aba Calibração) | Funcionando |
 | Alertas (jogador na tela, PM, morte, som) | Em breve |
 | Avisos no Telegram | Em breve |
 
@@ -218,42 +218,59 @@ Padrões (mudam na aba **Atalhos**):
 
 ## Configuração e arquivos de dados
 
-| Arquivo | Conteúdo |
+Os seus dados ficam em **`%APPDATA%\OTPBot`** (ex: `C:\Users\<você>\AppData\Roaming\OTPBot`), fora da pasta do código.
+A variável de ambiente `OTPBOT_DATA_DIR` troca essa pasta.
+
+| Arquivo (dentro de `%APPDATA%\OTPBot`) | Conteúdo |
 |---|---|
-| `config.json` | Toda a configuração do console (funções, teclas, cooldowns, calibração por resolução). O console salva sozinho. Chaves novas são completadas com os padrões de `core/config_manager.py`. |
-| `assets/calibration/reference_<resolução>.png` | Print de referência de cada perfil de calibração. |
-| `assets/sprites/` | Sprites dos itens (`<id>.png`) e o índice `sprites.json`. |
-| `models/otp_yolo.pt` | Modelo de visão (não versionado). Sem ele a visão roda em modo *mock* e não detecta nada. |
-| `route.json` | Rota gravada do cavebot (não versionada). |
+| `config.json` | Toda a configuração do console (funções, teclas, cooldowns, calibração por resolução). O console salva sozinho. Chaves novas são completadas com os padrões de `otpbot/interface/config_manager.py`. |
+| `calibration/reference_<resolução>.png` | Print de referência de cada perfil de calibração. Na primeira execução vêm os padrões de `defaults/calibration/`. |
+| `sprites/` | Sprites dos itens (`<id>.png`) e o índice `sprites.json`. |
+| `models/otp_yolo.pt` | Modelo de visão. Sem ele a visão roda em modo *mock* e não detecta nada. Caminho relativo no config vale a partir desta pasta. |
+| `route.json` | Rota gravada do cavebot. |
+| `logs/otpbot.log` | Log de cada execução (5 arquivos de até 2 MB). |
+
+**Migração automática:** na primeira execução depois da reorganização (E02), o bot **copia** para cá o que achar no
+lugar antigo, ao lado do código (`config.json`, `route.json`, `assets/sprites/`, `assets/calibration/`, `models/`). A
+cópia nunca sobrescreve um arquivo que já existe aqui e **nunca apaga o original**; depois de conferir, você pode apagar
+os arquivos antigos.
 
 ---
 
 ## Estrutura do projeto
 
 ```
-main.py                     Entrada: loop do bot, API e janela do console
-core/
-  runtime.py                Estado compartilhado (pausa, kill, telemetria, hotkeys)
-  api_server.py             API FastAPI + WebSocket de logs + console compilado
-  config_manager.py         config.json com padrões e migração
-  decision_thread.py        Cérebro: combo, defesa, postura, cura, captura
-  heal_routine.py           Rotina de cura com pokémon
-  action_orchestrator.py    Cooldowns por ação
-  mouse_controller.py       Mouse com curva Bézier, easing e ruído
-  navigator.py              Cavebot (gravar e tocar rota)
-modules/
-  vision_engine.py          Captura + YOLO (CUDA/FP16)
-  screen_calibration.py     Perfis por resolução e leitura de barras/postura
-  sprite_library.py         Sprites de itens e template matching
-  spatial_analyzer.py       Distância dos selvagens ao seu pokémon ("cercado")
-  chat_analyzer.py          OCR do chat (monitor de GM)
-frontend/                   Console (React + Vite + Tailwind)
-  src/schema/features.js    Abas, seções e campos do console (gerados a partir daqui)
-tests/                      Testes (pytest)
-assets/                     Calibração e sprites
+main.py                       Entrada: loop do bot, API e janela do console
+otpbot/
+  app/
+    paths.py                  Pastas de dados (%APPDATA%\OTPBot) e migração dos arquivos antigos
+    runtime.py                Estado compartilhado (pausa, kill, telemetria, hotkeys)
+  platform/
+    game_window.py            Janela do jogo, monitor, foco, DPI e captura da área cliente
+  perception/
+    capture.py                Print do monitor
+    bars.py                   Perfis por resolução e leitura de barras/postura
+    chat.py                   OCR do chat (monitor de GM)
+    sprites.py                Sprites de itens e template matching
+    spatial_analyzer.py       Distância dos selvagens ao seu pokémon ("cercado")
+    vision_engine.py          Captura + YOLO (CUDA/FP16)
+  brain/
+    decision_thread.py        Cérebro: combo, defesa, postura, cura, captura
+    heal_routine.py           Rotina de cura com pokémon
+  actuation/
+    action_orchestrator.py    Cooldowns por ação
+    mouse.py                  Mouse com curva Bézier, easing e ruído
+  hunts/
+    navigator.py              Cavebot por pixel (gravar e tocar rota); sai na E09
+  interface/
+    api_server.py             API FastAPI + WebSocket de logs + console compilado
+    config_manager.py         config.json com padrões e migração
+defaults/calibration/         Prints de referência padrão (copiados para os dados na 1ª execução)
+frontend/                     Console (React + Vite + Tailwind)
+  src/schema/features.js      Abas, seções e campos do console (gerados a partir daqui)
+tests/                        Testes (pytest)
+tools/                        Scripts avulsos (spike de entrada, análise de vídeos)
 ```
-
-Módulos das primeiras fases que o `main.py` não usa mais: `ai/` (protótipo de lógica fuzzy), `core/keyboard.py`, `core/mouse.py`, `modules/vision.py` e `modules/ui_analyzer.py`.
 
 ---
 

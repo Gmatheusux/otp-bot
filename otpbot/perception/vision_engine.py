@@ -1,5 +1,5 @@
 """
-modules/vision_engine.py — Inferência otimizada para RPA usando Ultralytics YOLOv8 + TensorRT.
+otpbot/perception/vision_engine.py — Inferência otimizada para RPA usando Ultralytics YOLOv8 + TensorRT.
 """
 import threading
 import cv2
