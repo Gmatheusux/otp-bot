@@ -67,10 +67,12 @@ class GameLocator:
             self._local.sct = game_window._new_mss()
         return self._local.sct
 
-    def capture(self) -> Tuple[Optional[np.ndarray], Optional[GameWindow]]:
+    def capture(self, region: Optional[Tuple[int, int, int, int]] = None
+                ) -> Tuple[Optional[np.ndarray], Optional[GameWindow]]:
         """
         (frame BGR da área cliente, janela). Frame None se o jogo não está aberto, está minimizado ou tem outra
         janela por cima (o print pegaria a janela de cima: leitura falsa é pior que nenhuma).
+        `region` (x, y, w, h relativo ao cliente) copia só aquele pedaço.
         """
         window = self.window()
         if window is None or window.minimized:
@@ -88,7 +90,9 @@ class GameLocator:
         if covered:
             return None, window
         try:
-            return game_window.capture_client(window, self._sct()), window
+            if region is None:
+                return game_window.capture_client(window, self._sct()), window
+            return game_window.capture_client(window, self._sct(), region), window
         except Exception as e:
             logger.debug(f"capture_client: {e}")
             return None, window

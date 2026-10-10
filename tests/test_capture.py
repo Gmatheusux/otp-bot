@@ -45,3 +45,25 @@ def test_jogo_minimizado_nao_e_capturado():
     window = replace(fake_window(), minimized=True)
     locator = GameLocator(locate=lambda: window)
     assert locator.capture() == (None, window)
+
+
+def test_regiao_copia_so_o_pedaco_do_cliente():
+    from dataclasses import replace
+
+    import numpy as np
+
+    from otpbot.platform.game_window import Rect, capture_client
+
+    class FakeSct:
+        def __init__(self):
+            self.areas = []
+
+        def grab(self, area):
+            self.areas.append(area)
+            return np.zeros((area["height"], area["width"], 4), np.uint8)
+
+    window = replace(fake_window(), client=Rect(-1920, 23, 1920, 1009))
+    sct = FakeSct()
+    img = capture_client(window, sct, (1534, 31, 88, 18))
+    assert img.shape == (18, 88, 3)
+    assert sct.areas == [{"left": -1920 + 1534, "top": 23 + 31, "width": 88, "height": 18}]

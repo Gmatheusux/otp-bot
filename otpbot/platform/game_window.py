@@ -145,15 +145,22 @@ def _new_mss():
     return (getattr(mss, "MSS", None) or mss.mss)()
 
 
-def capture_client(window: GameWindow, sct=None) -> np.ndarray:
-    """Print (BGR) só da área cliente do jogo. `sct` é uma instância de mss por thread; sem ela, cria uma."""
+def capture_client(window: GameWindow, sct=None, region: Optional[Tuple[int, int, int, int]] = None) -> np.ndarray:
+    """
+    Print (BGR) só da área cliente do jogo. `sct` é uma instância de mss por thread; sem ela, cria uma.
+    `region` = (x, y, w, h) relativo ao cliente, para ler um pedaço pequeno (ex.: coordenadas) sem copiar tudo.
+    """
     if window.minimized or window.client.width <= 0 or window.client.height <= 0:
         raise RuntimeError("Janela do jogo minimizada: não há o que capturar")
+    area = window.client.as_mss()
+    if region is not None:
+        x, y, w, h = region
+        area = {"left": window.client.left + x, "top": window.client.top + y, "width": w, "height": h}
     if sct is None:
         with _new_mss() as own:
-            raw = own.grab(window.client.as_mss())
+            raw = own.grab(area)
     else:
-        raw = sct.grab(window.client.as_mss())
+        raw = sct.grab(area)
     return np.ascontiguousarray(np.array(raw)[:, :, :3])
 
 
