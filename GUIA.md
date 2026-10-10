@@ -16,7 +16,7 @@
 | Bloqueios | Material do jogo: faltam shiny vivo e corpo de shiny (classe `corpo_shiny` com 0 exemplos), Battle cheia, debuff etc. (§6); E06 coleta prints ao vivo com o usuário (§1.5) |
 | Ferramentas | Tesseract 5.4.0 instalado em `C:\Program Files\Tesseract-OCR` (2026-10-10, só inglês; português na E07). Teste com imagem gerada: lê `[GM] Tutor: …` certo. Falta validar com print real do chat |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
-| Material do jogo recebido | 🟡 4 vídeos de hunt manual (3 em 3440, 1 em 1920), dataset da visão com 46 prints rotulados (ver §6) |
+| Material do jogo recebido | 🟡 4 vídeos de hunt manual (3 em 3440, 1 em 1920), dataset da visão com 51 prints rotulados (ver §6) |
 | Última atualização | 2026-10-10, conversa E04 |
 
 ---
@@ -435,7 +435,7 @@ Necessário a partir da **E04**. Pode chegar em partes; registrar aqui o que che
 
 | Item | Para qual etapa | Recebido? |
 |---|---|---|
-| 10–20 prints de hunt com lure cheio, em 1920×1080 **e** 3440×1440 | E04, E05 | ✅ E04: dataset em `%APPDATA%\OTPBot\dataset` (fora do git): 46 prints rotulados (36 treino / 10 validação; 31 de 3440 e 13 de 1920 tirados dos vídeos + 2 ao vivo de 1920), 326 caixas (meu_pokemon 45, selvagem 190, selvagem_shiny 28, corpo 63, corpo_shiny 0); 304 frames descartados pelo usuário (repetidos); 5 prints ao vivo de 1920 (hunt de Seviper) ainda para rotular. Hunts vistas: Swellow, Girafarig, Bastiodon (3440 e 1920), Seviper |
+| 10–20 prints de hunt com lure cheio, em 1920×1080 **e** 3440×1440 | E04, E05 | ✅ E04: dataset em `%APPDATA%\OTPBot\dataset` (fora do git): 51 prints rotulados (41 treino / 10 validação; 31 de 3440 e 13 de 1920 tirados dos vídeos + 7 ao vivo de 1920), 361 caixas (meu_pokemon 49, selvagem 211, selvagem_shiny 28, corpo 73, corpo_shiny 0); 304 frames descartados pelo usuário (repetidos); fila vazia. Hunts vistas: Swellow, Girafarig, Bastiodon (3440 e 1920), Seviper |
 | Shiny vivo ao lado de normal; corpo de shiny ao lado de corpo normal | E05, E07 | 🟡 E04: 28 selvagens shiny rotulados nos vídeos; **nenhum corpo de shiny** ainda |
 | Battle list cheia (com shiny e com o ícone de "longe do spawn") | E06 | ⬜ |
 | Minimapa com as coordenadas visíveis | E08 | ✅ E08: 3 prints da E01 já no git (`docs/e01/`: `433, 1501, 7`, `2690, 4170, 2`, `457, 1457, 7`) + o 8 coletado ao vivo (`1713, 4158, 7`). Modelos dos dígitos em `defaults/coords/`; prints ao vivo em `%APPDATA%\OTPBot\e08` |
@@ -489,7 +489,7 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
   Poké Bola quebrou."; regra de rótulo.
 - **Pendências e desvios:**
   - **`corpo_shiny` com 0 exemplos:** o treino da E05 não vai aprender essa classe sem prints de corpo de shiny (§6).
-  - 5 prints ao vivo (hunt de Seviper, 1920) estão em "Para rotular". O usuário descartou 304 frames repetidos (ficam
+  - Os 5 prints ao vivo da hunt de Seviper (1920) foram rotulados no fim da conversa: total 51 prints / 361 caixas. O usuário descartou 304 frames repetidos (ficam
     no manifest como descartados; a extração não traz de volta).
   - Captura ao vivo em 3440 não testada (o jogo estava em 1920); o recorte é o mesmo código, com o perfil `3440x1369`.
   - No layout de 3440 a hotbar e a EXP ficam por cima da faixa de baixo da área do jogo e entram no recorte. O vídeo
