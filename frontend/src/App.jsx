@@ -8,6 +8,7 @@ import OverviewTab from './components/OverviewTab.jsx'
 import RouteTab from './components/RouteTab.jsx'
 import ItemsTab from './components/ItemsTab.jsx'
 import CalibrationTab from './components/CalibrationTab.jsx'
+import VisionTab from './components/VisionTab.jsx'
 import Icon from './components/Icon.jsx'
 
 const TAB_KEY = 'otp-active-tab'
@@ -139,6 +140,8 @@ function Console() {
     content = <CalibrationTab status={offline ? null : status} />
   } else if (tab.custom === 'items') {
     content = <ItemsTab />
+  } else if (tab.custom === 'vision') {
+    content = <VisionTab />
   } else if (tab.custom === 'route') {
     content = <RouteTab tab={tab} status={status} offline={offline} control={control} />
   } else {

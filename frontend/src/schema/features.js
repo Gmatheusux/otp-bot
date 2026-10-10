@@ -168,6 +168,13 @@ export const TABS = [
     custom: 'items',
   },
   {
+    id: 'visao',
+    label: 'Visão/IA',
+    icon: 'camera',
+    description: 'Prints da área do jogo e rótulos (caixas) para treinar a visão do bot.',
+    custom: 'vision',
+  },
+  {
     id: 'rota',
     label: 'Rota',
     icon: 'route',

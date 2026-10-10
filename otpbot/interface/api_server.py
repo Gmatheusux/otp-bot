@@ -361,6 +361,13 @@ async def test_calibration(req: CalibrationTest, rt=Depends(get_runtime)):
     return {"source": req.source, "width": int(frame.shape[1]), "height": int(frame.shape[0]), "readings": readings}
 
 
+# ---------------------------------------------------------------- Dataset da visão (E04)
+
+from otpbot.interface.dataset_api import make_router as make_dataset_router  # noqa: E402
+
+app.include_router(make_dataset_router(require_token))
+
+
 # O console compilado (npm run build) é servido na raiz. Rotas da API acima têm prioridade.
 if FRONTEND_DIST.exists():
     app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="console")
