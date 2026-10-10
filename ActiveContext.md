@@ -165,3 +165,8 @@
 - <span style="color: #CC5500;">**Resumo:**</span> `perception/coords.py` lê `x, y, z` da caixinha do minimapa por dígitos-modelo (`defaults/coords/`, sem Tesseract) e publica `coords` no WorldState; `actuation/movement.py` anda pelo numérico (Num Lock off) confirmando cada passo pela coordenada e repetindo a tecla que o jogo engole no fim da animação; `hunts/hunt_model.py` com equipe com papéis (v1: dano e curador). Aceite ao vivo: A → B em 3 trechos, 26 passos sem leitura errada. Testes 87 → 126. Detalhes no `GUIA.md` §7.
 - <span style="color: #CC5500;">**Bloqueios:**</span> o bot como administrador não achou o `config.json` (conferir antes de rodar o bot de verdade).
 - <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E09 (gravador de hunt e editor de rota); E04, E06 e E15 seguem em paralelo.
+## <span style="color: #CC5500;">**Handoff: E04 (Coleta de prints e ferramenta de rotular)**</span>
+- <span style="color: #CC5500;">**Status:**</span> Concluída (2026-10-10).
+- <span style="color: #CC5500;">**Resumo:**</span> `learning/dataset.py` (formato YOLO em `%APPDATA%\OTPBot\dataset`, só a área do jogo, divisão por grupo de 30 s, 5 classes fixas), rotas `/api/dataset/*`, aba **Visão/IA** com coleta (botão + automática) e ferramenta de caixas, `tools/extrair_frames_video.py`. Primeiro lote rotulado pelo usuário: 46 prints, 326 caixas (36 treino / 10 validação). Testes 87 → 106 (145 com a E08). Detalhes no `GUIA.md` §7.
+- <span style="color: #CC5500;">**Bloqueios:**</span> `corpo_shiny` sem nenhum exemplo; faltam prints de corpo de shiny.
+- <span style="color: #CC5500;">**Próxima Etapa Pendente:**</span> E05 (treino, ONNX e visão ao vivo); E06 e E15 seguem em paralelo; E09 liberada.

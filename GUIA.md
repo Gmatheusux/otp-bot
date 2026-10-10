@@ -11,13 +11,13 @@
 
 | Campo | Valor |
 |---|---|
-| **Etapa atual** | **Em paralelo: E04, E06 e E15** (abertas em 2026-10-10; regras na §1.5). E09 liberada (depende só da E08) |
-| Última etapa concluída | E08: coordenadas, movimento e modelo de hunt (2026-10-10) |
-| Bloqueios | Material do jogo: só os vídeos e as coordenadas chegaram; E04 e E06 coletam prints ao vivo com o usuário (§1.5) |
+| **Etapa atual** | **Em paralelo: E06 e E15** (abertas em 2026-10-10; regras na §1.5). E09 liberada (depende só da E08); **E05 liberada** (depende só da E04) |
+| Última etapa concluída | E04: coleta de prints e ferramenta de rotular (2026-10-10); antes, E08 (2026-10-10) |
+| Bloqueios | Material do jogo: faltam shiny vivo e corpo de shiny (classe `corpo_shiny` com 0 exemplos), Battle cheia, debuff etc. (§6); E06 coleta prints ao vivo com o usuário (§1.5) |
 | Ferramentas | Tesseract 5.4.0 instalado em `C:\Program Files\Tesseract-OCR` (2026-10-10, só inglês; português na E07). Teste com imagem gerada: lê `[GM] Tutor: …` certo. Falta validar com print real do chat |
 | Git | ✅ liberado em 2026-10-09; remoto `origin` = github.com/Gmatheusux/otp-bot (branch `main`) |
-| Material do jogo recebido | 🟡 2 vídeos de hunt manual em 3440 (ver §6) |
-| Última atualização | 2026-10-10, conversa E08 |
+| Material do jogo recebido | 🟡 4 vídeos de hunt manual (3 em 3440, 1 em 1920), dataset da visão com 46 prints rotulados (ver §6) |
+| Última atualização | 2026-10-10, conversa E04 |
 
 ---
 
@@ -215,7 +215,7 @@ Cada etapa = **uma conversa**. Tamanho: **P** (horas), **M** (1–2 dias), **G**
 | E01 | Git, spike de entrada sem foco e janela do jogo | Fundação | M | E00 | ✅ |
 | E02 | Nova estrutura de pastas, dados em %APPDATA% e limpeza | Fundação | M | E01 | ✅ |
 | E03 | WorldState, árbitro, fila e trava de entrada | Fundação | G | E02 | ✅ |
-| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | 🔵 |
+| E04 | Coleta de prints e ferramenta de rotular | Visão | G | E03 📦 | ✅ |
 | E05 | Treino, ONNX e visão ao vivo | Visão | G | E04 📦 | ⬜ |
 | E06 | Leitor da Battle e alertas de segurança | Visão | G | E03 📦 | 🔵 |
 | E07 | Captura de shiny | Captura | G | E05, E06 📦 | ⬜ |
@@ -300,11 +300,12 @@ interrompe uma rotina longa (teste); testes passando.
 **Objetivo:** criar o dataset da visão.
 **Leitura obrigatória:** `docs/ARQUITETURA.md` §6; `docs/ESPECIFICACAO.md` §3 e §8.
 
-- [ ] Coleta: botão no console + captura automática periódica durante a hunt, nas duas resoluções.
-- [ ] Aba **Visão/IA**: ferramenta de rotular (caixas) com as classes `meu_pokemon`, `selvagem`, `selvagem_shiny`,
+- [x] Coleta: botão no console + captura automática periódica durante a hunt, nas duas resoluções.
+  *(Ao vivo testado em 1920; 3440 pelos vídeos (`tools/extrair_frames_video.py`). Funciona com o bot pausado.)*
+- [x] Aba **Visão/IA**: ferramenta de rotular (caixas) com as classes `meu_pokemon`, `selvagem`, `selvagem_shiny`,
   `corpo`, `corpo_shiny`.
-- [ ] Formato do dataset compatível com o treino YOLO; divisão treino/validação.
-- [ ] Rotular junto com o usuário um primeiro lote.
+- [x] Formato do dataset compatível com o treino YOLO; divisão treino/validação. *(Por grupo de 30 s, ARQUITETURA §6.1.)*
+- [x] Rotular junto com o usuário um primeiro lote. *(46 prints, 326 caixas.)*
 
 **Aceite:** dataset salvo em `%APPDATA%\OTPBot\dataset` com um primeiro lote rotulado; a ferramenta abre, salva e
 reabre rótulos.
@@ -434,8 +435,8 @@ Necessário a partir da **E04**. Pode chegar em partes; registrar aqui o que che
 
 | Item | Para qual etapa | Recebido? |
 |---|---|---|
-| 10–20 prints de hunt com lure cheio, em 1920×1080 **e** 3440×1440 | E04, E05 | ⬜ |
-| Shiny vivo ao lado de normal; corpo de shiny ao lado de corpo normal | E05, E07 | ⬜ |
+| 10–20 prints de hunt com lure cheio, em 1920×1080 **e** 3440×1440 | E04, E05 | ✅ E04: dataset em `%APPDATA%\OTPBot\dataset` (fora do git): 46 prints rotulados (36 treino / 10 validação; 31 de 3440 e 13 de 1920 tirados dos vídeos + 2 ao vivo de 1920), 326 caixas (meu_pokemon 45, selvagem 190, selvagem_shiny 28, corpo 63, corpo_shiny 0); 304 frames descartados pelo usuário (repetidos); 5 prints ao vivo de 1920 (hunt de Seviper) ainda para rotular. Hunts vistas: Swellow, Girafarig, Bastiodon (3440 e 1920), Seviper |
+| Shiny vivo ao lado de normal; corpo de shiny ao lado de corpo normal | E05, E07 | 🟡 E04: 28 selvagens shiny rotulados nos vídeos; **nenhum corpo de shiny** ainda |
 | Battle list cheia (com shiny e com o ícone de "longe do spawn") | E06 | ⬜ |
 | Minimapa com as coordenadas visíveis | E08 | ✅ E08: 3 prints da E01 já no git (`docs/e01/`: `433, 1501, 7`, `2690, 4170, 2`, `457, 1457, 7`) + o 8 coletado ao vivo (`1713, 4158, 7`). Modelos dos dígitos em `defaults/coords/`; prints ao vivo em `%APPDATA%\OTPBot\e08` |
 | Pokémon com debuff ativo e o mesmo sem debuff | E12 | ⬜ |
@@ -443,7 +444,7 @@ Necessário a partir da **E04**. Pode chegar em partes; registrar aqui o que che
 | Mensagens do chat de captura com sucesso e com falha | E07 | ⬜ |
 | Analisador de hunt do jogo aberto | E13 | ⬜ |
 | Tabela de itens da Q26 (nome, como usa, tecla) | E07, E11 | ⬜ |
-| Vídeo de 5–10 min fazendo a hunt na mão | E04, E09, E14 | 🟡 E03: 2 vídeos em 3440 (~5,9 min e ~2,6 min) em `C:\Users\Gabe\Videos\Captures` (fora do git). Gravados da janela: 2560×1020 = área cliente 3440×1369 reduzida ×0,744 (ampliar de volta antes de medir). Faltam vídeos em 1920 |
+| Vídeo de 5–10 min fazendo a hunt na mão | E04, E09, E14 | 🟡 E03: 2 vídeos em 3440 (~5,9 min e ~2,6 min) em `C:\Users\Gabe\Videos\Captures` (fora do git). Gravados da janela: 2560×1020 = área cliente 3440×1369 reduzida ×0,744 (ampliar de volta antes de medir). Faltam vídeos em 1920 · **E04:** + `!!! ALERTA_ Recebi PM !!! 2026-10-10 08-11-46.mp4` (**1920×1012**, 4,6 min, hunt de Bastiodon; o nome é o título da janela na hora) e `Service 2026-10-10 15-25-19.mp4` (3440 em 2560×1020, 4,6 min, hunt de Girafarig), na mesma pasta. Frames dos 4 vídeos extraídos a cada 3 s para o dataset |
 
 ---
 
@@ -460,6 +461,46 @@ Uma entrada por conversa, da mais recente para a mais antiga. Modelo:
 - Pendências e desvios:
 - Próxima etapa e o que o usuário precisa providenciar:
 ```
+
+### E04: Coleta de prints e ferramenta de rotular (2026-10-10)
+- **Feito:** `otpbot/learning/dataset.py`: as 5 classes fixas; dataset em `%APPDATA%\OTPBot\dataset` com
+  `pending/`, `images|labels/{train,val}`, `data.yaml` e `manifest.json`; só o recorte da `game_area`; divisão por grupo
+  de 30 s; relê o manifest se outro processo gravou e recupera PNG órfão; `AutoCollector` pula repetidos.
+  `otpbot/interface/dataset_api.py`: rotas `/api/dataset/*` num APIRouter, com uma linha no `api_server`.
+  `tools/extrair_frames_video.py`: frame a cada N s, amplia o 3440 gravado em 2560 e não duplica ao rodar de novo.
+  Aba **Visão/IA** (`VisionTab.jsx`): coletar (botão + automático), lista, caixas (desenhar, mover, cantos, 1–5,
+  Del, ←/→ salvando, C cola), descartar e contadores. README e ARQUITETURA §6.1 e §7 atualizados.
+- **Critérios de aceite:**
+  1. Dataset em `%APPDATA%\OTPBot\dataset` com um primeiro lote rotulado: **46 prints, 326 caixas**, rotulados pelo
+     usuário na ferramenta (36 treino / 10 validação; contagem por classe na §6). Conferi as caixas desenhadas em
+     8 prints.
+  2. A ferramenta abre, salva e reabre rótulos: `test_salvar_e_reabrir_rotulos` (instância nova lê do disco) e
+     `test_rotas_do_dataset`. No uso real, o usuário corrigiu os 46 pela lista "Rotuladas" depois de dois reinícios
+     do bot.
+  3. Coleta: botão testado ao vivo (`live_20261010-085831_105`, perfil `1920x1009`, 1124×588); captura automática ao
+     vivo com o jogo visível = 5 prints em 20 s; com o jogo coberto, nenhum print e o motivo na tela. 3440 coletado
+     pelos vídeos (recortes conferidos: área do jogo em (552, 4) e (398, 133), batendo com os perfis).
+  4. Testes: antes **87 passed** (E03); E04 sozinha **106 passed**; depois do merge com a `main` (E08) **145 passed**.
+- **Decisões novas / mudanças na arquitetura:** sem D nova. Do usuário: imagem = recorte da `game_area`;
+  `meu_pokemon` = só o pokémon fora da bola; caixa justa no sprite, com o nome dentro só quando ele fica por cima.
+  Minhas: grupo de 30 s (60 s deixava 45/1); rotas da Visão num APIRouter à parte.
+- **Fatos novos do jogo (registrados na especificação §3):** corpo = deitado, sem nome e sem barra; caveira = selvagem
+  mais forte; nome com ícone acima do personagem = guild; "Mark" = NPC; mensagem de falha da bola (pt): "Desculpe, sua
+  Poké Bola quebrou."; regra de rótulo.
+- **Pendências e desvios:**
+  - **`corpo_shiny` com 0 exemplos:** o treino da E05 não vai aprender essa classe sem prints de corpo de shiny (§6).
+  - 5 prints ao vivo (hunt de Seviper, 1920) estão em "Para rotular". O usuário descartou 304 frames repetidos (ficam
+    no manifest como descartados; a extração não traz de volta).
+  - Captura ao vivo em 3440 não testada (o jogo estava em 1920); o recorte é o mesmo código, com o perfil `3440x1369`.
+  - No layout de 3440 a hotbar e a EXP ficam por cima da faixa de baixo da área do jogo e entram no recorte. O vídeo
+    `15-25-19` tem uma faixa escura fina na direita e embaixo.
+  - Um print foi salvo como "sem nada" por um arraste meu no teste; desfiz (voltou para a fila) e o usuário rotulou.
+  - Bug achado no uso: com o console aberto, a extração de vídeo gravava o manifest por fora e o próximo salvar o
+    sobrescreveria. Corrigido (releitura + recuperação) antes de qualquer perda.
+  - A ferramenta de sincronizar do app recusou porque o `origin` não está fixado no app; fiz `git merge origin/main`.
+- **Próxima etapa:** **E05** (treino, ONNX e visão ao vivo), liberada. O usuário precisa ter prints de **shiny vivo
+  e corpo de shiny**, e seguir rotulando (os 5 de Seviper + mais frames). E06 e E15 continuam em paralelo; E09
+  liberada.
 
 ### E08: Coordenadas, movimento e modelo de hunt (2026-10-10)
 - **Feito:** `perception/coords.py` (recorte da caixinha "x, y, z" do minimapa → pixels claros → caracteres separados
